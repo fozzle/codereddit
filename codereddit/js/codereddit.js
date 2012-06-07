@@ -4,7 +4,7 @@ $(function(){
 	
 	// Bind click event handlers to our expanders and collapsers.
 	$('body').delegate(".expander", "click", function(){
-		$(this).parents('ul').first().find('.comments').text('yo yo yo');
+		$(this).parents('ul').first().find('.comments').text(getComments($(this).attr('id')));
 		$(this).attr('src', 'img/collapse.png');
 		$(this).addClass('collapse');
 		$(this).removeClass('expander');
@@ -41,7 +41,7 @@ function renderPost(subreddit){
 require('<a href='readme.html'>readme.php</a>');\n\
 session_start();</pre>"
 				if (subreddit){
-					posting += "<pre class='php'>$subreddit = $_GET[\""+subreddit+"\"]</pre>";
+					posting += "<pre class='php'>$subreddit = $_GET[\""+subreddit+"\"];</pre>";
 				}
 				else {
 					posting += "<pre class='php'>$subreddit = $_GET[\"frontpage\"];</pre>";
@@ -53,9 +53,18 @@ session_start();</pre>"
 					var title = createTitle(true_entry, entry);
 					$.get('php.html', function(template) {
 						template = template.replace("${title}",title);
-						//if (true_entry.domain == "imgur.com"){
-						//	true_entry.url == "i." + true_entry.url
-						//}
+						// People sometimes post non-direct images, most commonly imgur.com
+						// this block will guess the direct link equivalent. Not very accurately...Need to look into changing this.
+
+						if (true_entry.selftext){
+							template = template.replace("${selftext}", formatSelfText(true_entry.selftext));
+						}
+						else {
+							template = template.replace("${selftext}", "");
+						}
+						if (true_entry.domain == "imgur.com"){
+							true_entry.url = true_entry.url.replace("imgur.com", "i.imgur.com") + ".jpg"			
+						}
 						if (/\.(jpg)|(gif)|(png)$/.test(true_entry.url)){
 							template = template.replace("${fancybox}", "image");
 						}
@@ -65,13 +74,15 @@ session_start();</pre>"
 						else {
 							template = template.replace("${fancybox}", "");
 						}
-						template = template.replace("${subreddit}", true_entry.subreddit);	
+						template = template.replace("${subreddit}", true_entry.subreddit);
+						template = template.replace("${suburl}", "#" + true_entry.subreddit);	
 						template = template.replace("${url}", true_entry.url);
 						template = template.replace("${author}", true_entry.author);
 						template = template.replace("${score}", true_entry.score);
 						template = template.replace("${domain}", true_entry.domain);
 						template = template.replace("${fulltitle}", true_entry.title);
 						template = template.replace("${num_comments}", true_entry.num_comments);
+						template = template.replace("${entry_id}", true_entry.name);
 						$('body').append(template);
 						$("pre.php").snippet("php", {style:"emacs", showNum: false, transparent: true, menu: false});
 						//alert(title);
@@ -81,24 +92,25 @@ session_start();</pre>"
 							'speedIn'		:	600, 
 							'speedOut'		:	200
 						});
-						$("a.video").fancybox({
-							'padding' : 0,
-							'autoScale' : false,
-							'transitionIn' : 'elastic',
-							'transitionOut' : 'elastic',
-							'speedIn' : 600,
-							'speedOut': 200,
-							'title' : this.title,
-							'width' : 640,
-							'height': 385,
-							'href' : this.href.replace(new RegExp("watch\\?v=", "i"), 'v/'),
-							'type' : 'swf',
-							'swf' : {
-								'wmode' : 'transparent',
-								'allowfullscreen' : 'true'
-							}
-						});
-						$("#loading").remove();
+						// TODO: Take a look at this, it's for youtube videos in fancybox.
+						//$("a.video").fancybox({
+						//	'padding' : 0,
+						//	'autoScale' : false,
+						//	'transitionIn' : 'elastic',
+						//	'transitionOut' : 'elastic',
+						//	'speedIn' : 600,
+						//	'speedOut': 200,
+						//	'title' : this.title,
+						//	'width' : 640,
+						//	'height': 385,
+						//	'href' : this.href.replace(new RegExp("watch\\?v=", "i"), 'v/'),
+						//	'type' : 'swf',
+						//	'swf' : {
+						//		'wmode' : 'transparent',
+						//		'allowfullscreen' : 'true'
+						//	}
+						//});
+						
 					});
 			
 				});		
@@ -111,7 +123,7 @@ function createTitle(entry, number){
 	
 	// Emulate camel case, slice ridiculous title lengths, and remove characters.
 	var title = entry.title
-				.toLowerCase().substr(0,20).replace(/\W+/gi, '').split(' ');
+				.toLowerCase().substring(0,20).replace(/[^A-Za-z0-9\s\s+]/gi, '').split(' ');
 	for (token in title){
 		title[token] = title[token].charAt(0).toUpperCase() + title[token].slice(1);
 	};
@@ -122,8 +134,20 @@ function grabHash(hash){
 	return hash.replace('#','');
 }
 function getComments(entry){
-	var subreddit = entry.subreddit;
-	alert(subreddit);
-	return subreddit;
+	// Retrieve and display comments
+	var id = entry.name.replace('t3_', '');
+	return id;
 }
-
+function formatSelfText(text){
+	// If it's a self text we're going to output a large
+	// comment block.
+	text = text.replace(/(\r\n|\n|\r)/gm,"");
+	var new_text = "";
+	num_splits = Math.floor(text.length / 80);
+	i = 0
+	while (i <= num_splits){
+		new_text = new_text + "// " + text.substring(i * 80, (i+1)*80) + "\n" + "    ";
+		i++;
+	}
+	return new_text;
+}
