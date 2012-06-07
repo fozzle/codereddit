@@ -4,13 +4,18 @@ $(function(){
 	
 	// Bind click event handlers to our expanders and collapsers.
 	$('body').delegate(".expander", "click", function(){
-		$(this).parents('ul').first().find('.comments').text(getComments($(this).attr('id')));
+		if ($(this).parents('ul').first().find('.comments').is(':empty')){
+			getComments($(this).attr('id'), $(this).parents('ul').first().find('.comments'));
+		}
+		else {
+			$(this).parents('ul').first().find('.comments').show();
+		}
 		$(this).attr('src', 'img/collapse.png');
 		$(this).addClass('collapse');
 		$(this).removeClass('expander');
 	});
 	$('body').delegate(".collapse", "click", function(){
-		$(this).parents('ul').first().find('.comments').text('');
+		$(this).parents('ul').first().find('.comments').hide();
 		$(this).attr('src', 'img/expand.png');
 		$(this).addClass('expander');
 		$(this).removeClass('collapse');	
@@ -133,10 +138,20 @@ function createTitle(entry, number){
 function grabHash(hash){
 	return hash.replace('#','');
 }
-function getComments(entry){
+function getComments(raw_id, comment_location){
 	// Retrieve and display comments
-	var id = entry.name.replace('t3_', '');
-	return id;
+	var id = raw_id.replace('t3_', '');
+	text = '';
+	var comment_url = 'http://www.reddit.com/comments/' + id + '.json?jsonp=?';
+	var comments = $.getJSON(comment_url, function(comments){
+		comments = comments[1].data.children.slice(0,20);
+		$.each(comments, function(comment){
+			text += comments[comment].data.body;
+			comment_location.text(text);
+		});
+		return text;
+	});
+	return text;
 }
 function formatSelfText(text){
 	// If it's a self text we're going to output a large
