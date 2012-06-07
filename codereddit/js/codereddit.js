@@ -6,6 +6,7 @@ $(function(){
 	$('body').delegate(".expander", "click", function(){
 		if ($(this).parents('ul').first().find('.comments').is(':empty')){
 			getComments($(this).attr('id'), $(this).parents('ul').first().find('.comments'));
+			$(this).parents('ul').first().find('.comments').snippet("php", {style:"emacs", showNum: false, transparent: true, menu: false});
 		}
 		else {
 			$(this).parents('ul').first().find('.comments').show();
@@ -13,6 +14,7 @@ $(function(){
 		$(this).attr('src', 'img/collapse.png');
 		$(this).addClass('collapse');
 		$(this).removeClass('expander');
+		
 	});
 	$('body').delegate(".collapse", "click", function(){
 		$(this).parents('ul').first().find('.comments').hide();
@@ -141,15 +143,23 @@ function grabHash(hash){
 function getComments(raw_id, comment_location){
 	// Retrieve and display comments
 	var id = raw_id.replace('t3_', '');
-	text = '';
+	var text = '';
 	var comment_url = 'http://www.reddit.com/comments/' + id + '.json?jsonp=?';
 	var comments = $.getJSON(comment_url, function(comments){
 		comments = comments[1].data.children.slice(0,20);
 		$.each(comments, function(comment){
-			text += comments[comment].data.body;
-			comment_location.text(text);
+			template = "	$author = ${commenter};\n\
+	$score = ${score}\n\
+	//${text} \n\n\n"
+			template = template.replace('${commenter}', comments[comment].data.author);
+			template = template.replace('${score}', comments[comment].data.ups - comments[comment].data.downs);
+			template = template.replace('${text}', comments[comment].data.body);
+			text += template;
+			
+			
 		});
-		return text;
+		comment_location.text(text);
+		
 	});
 	return text;
 }
