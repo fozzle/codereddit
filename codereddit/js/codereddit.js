@@ -6,7 +6,6 @@ $(function(){
 	$('body').delegate(".expander", "click", function(){
 		if ($(this).parents('ul').first().find('.comments').is(':empty')){
 			getComments($(this).attr('id'), $(this).parents('ul').first().find('.comments'));
-			$(this).parents('ul').first().find('.comments').snippet("php", {style:"emacs", showNum: false, transparent: true, menu: false});
 		}
 		else {
 			$(this).parents('ul').first().find('.comments').show();
@@ -55,72 +54,79 @@ session_start();</pre>"
 				}
 				
 				$('body').append(posting);
-				$.each(items.data.children, function(entry){
-					var true_entry = items.data.children[entry].data
-					var title = createTitle(true_entry, entry);
-					$.get('php.html', function(template) {
-						template = template.replace("${title}",title);
-						// People sometimes post non-direct images, most commonly imgur.com
-						// this block will guess the direct link equivalent. Not very accurately...Need to look into changing this.
 
-						if (true_entry.selftext){
-							template = template.replace("${selftext}", formatSelfText(true_entry.selftext));
-						}
-						else {
-							template = template.replace("${selftext}", "");
-						}
-						if (true_entry.domain == "imgur.com"){
-							true_entry.url = true_entry.url.replace("imgur.com", "i.imgur.com") + ".jpg"			
-						}
-						if (/\.(jpg)|(gif)|(png)$/.test(true_entry.url)){
-							template = template.replace("${fancybox}", "image");
-						}
-						else if (/www.youtube.com/.test(true_entry.url)){
-							template = template.replace("${fancybox}", "video");
-						}
-						else {
-							template = template.replace("${fancybox}", "");
-						}
-						template = template.replace("${subreddit}", true_entry.subreddit);
-						template = template.replace("${suburl}", "#" + true_entry.subreddit);	
-						template = template.replace("${url}", true_entry.url);
-						template = template.replace("${author}", true_entry.author);
-						template = template.replace("${score}", true_entry.score);
-						template = template.replace("${domain}", true_entry.domain);
-						template = template.replace("${fulltitle}", true_entry.title);
-						template = template.replace("${num_comments}", true_entry.num_comments);
-						template = template.replace("${entry_id}", true_entry.name);
-						$('body').append(template);
-						$("pre.php").snippet("php", {style:"emacs", showNum: false, transparent: true, menu: false});
-						//alert(title);
-						$("a.image").fancybox({
-							'transitionIn'	:	'elastic',
-							'transitionOut'	:	'elastic',
-							'speedIn'		:	600, 
-							'speedOut'		:	200
-						});
-						// TODO: Take a look at this, it's for youtube videos in fancybox.
-						//$("a.video").fancybox({
-						//	'padding' : 0,
-						//	'autoScale' : false,
-						//	'transitionIn' : 'elastic',
-						//	'transitionOut' : 'elastic',
-						//	'speedIn' : 600,
-						//	'speedOut': 200,
-						//	'title' : this.title,
-						//	'width' : 640,
-						//	'height': 385,
-						//	'href' : this.href.replace(new RegExp("watch\\?v=", "i"), 'v/'),
-						//	'type' : 'swf',
-						//	'swf' : {
-						//		'wmode' : 'transparent',
-						//		'allowfullscreen' : 'true'
-						//	}
+				$.get('php.html', function(template){
+					
+					$.each(items.data.children, function(entry){
+						var code_templ = template;
+						var true_entry = items.data.children[entry].data
+						var title = createTitle(true_entry, entry);
+						//$.get('php.html', function(template) {
+							code_templ = code_templ.replace("${title}",title);
+							
+							if (true_entry.selftext){
+								code_templ = code_templ.replace("${selftext}", formatCommentText(true_entry.selftext, "    "));
+							}
+							else {
+								code_templ = code_templ.replace("${selftext}", "");
+							}
+
+							// People sometimes post non-direct images, most commonly imgur.com
+							// this block will guess the direct link equivalent. Not very accurately...Need to look into changing this.
+							// if (true_entry.domain == "imgur.com"){
+							// 	true_entry.url = true_entry.url.replace("imgur.com", "i.imgur.com") + ".jpg"			
+							// }
+							if (/\.(jpg)|(gif)|(png)$/.test(true_entry.url)){
+								code_templ = code_templ.replace("${fancybox}", "image");
+							}
+							else if (/www.youtube.com/.test(true_entry.url)){
+								code_templ = code_templ.replace("${fancybox}", "video");
+							}
+							else {
+								code_templ = code_templ.replace("${fancybox}", "");
+							}
+							code_templ = code_templ.replace("${subreddit}", true_entry.subreddit);
+							code_templ = code_templ.replace("${suburl}", "#" + true_entry.subreddit);	
+							code_templ = code_templ.replace("${url}", true_entry.url);
+							code_templ = code_templ.replace("${author}", true_entry.author);
+							code_templ = code_templ.replace("${score}", true_entry.score);
+							code_templ = code_templ.replace("${domain}", true_entry.domain);
+							code_templ = code_templ.replace("${fulltitle}", true_entry.title);
+							code_templ = code_templ.replace("${num_comments}", true_entry.num_comments);
+							code_templ = code_templ.replace("${entry_id}", true_entry.name);
+							$('body').append(code_templ);
+							$("pre.php").snippet("php", {style:"emacs", showNum: false, transparent: true, menu: false});
+							//alert(title);
+							$("a.image").fancybox({
+								'transitionIn'	:	'elastic',
+								'transitionOut'	:	'elastic',
+								'speedIn'		:	600, 
+								'speedOut'		:	200
+							});
+							// TODO: Take a look at this, it's for youtube videos in fancybox.
+							//$("a.video").fancybox({
+							//	'padding' : 0,
+							//	'autoScale' : false,
+							//	'transitionIn' : 'elastic',
+							//	'transitionOut' : 'elastic',
+							//	'speedIn' : 600,
+							//	'speedOut': 200,
+							//	'title' : this.title,
+							//	'width' : 640,
+							//	'height': 385,
+							//	'href' : this.href.replace(new RegExp("watch\\?v=", "i"), 'v/'),
+							//	'type' : 'swf',
+							//	'swf' : {
+							//		'wmode' : 'transparent',
+							//		'allowfullscreen' : 'true'
+							//	}
+							//});
+							
 						//});
-						
-					});
-			
-				});		
+					
+					});		
+				});
+				
 		});
 		return posts;
 }
@@ -148,22 +154,21 @@ function getComments(raw_id, comment_location){
 	var comments = $.getJSON(comment_url, function(comments){
 		comments = comments[1].data.children.slice(0,20);
 		$.each(comments, function(comment){
-			template = "	$author = ${commenter};\n\
-	$score = ${score}\n\
-	//${text} \n\n\n"
+			template = "	$author = \"${commenter}\";\n\
+	$score = ${score};\n\
+	${text} \n\n\n"
 			template = template.replace('${commenter}', comments[comment].data.author);
 			template = template.replace('${score}', comments[comment].data.ups - comments[comment].data.downs);
-			template = template.replace('${text}', comments[comment].data.body);
+			template = template.replace('${text}', formatCommentText(comments[comment].data.body, "    "));
 			text += template;
-			
-			
 		});
 		comment_location.text(text);
+		comment_location.snippet("php", {style:"emacs", showNum: false, transparent: true, menu: false});
 		
 	});
 	return text;
 }
-function formatSelfText(text){
+function formatCommentText(text, space){
 	// If it's a self text we're going to output a large
 	// comment block.
 	text = text.replace(/(\r\n|\n|\r)/gm,"");
@@ -171,7 +176,7 @@ function formatSelfText(text){
 	num_splits = Math.floor(text.length / 80);
 	i = 0
 	while (i <= num_splits){
-		new_text = new_text + "// " + text.substring(i * 80, (i+1)*80) + "\n" + "    ";
+		new_text = new_text + "// " + text.substring(i * 80, (i+1)*80) + "\n" + space;
 		i++;
 	}
 	return new_text;
