@@ -137,9 +137,11 @@ function createTitle(entry, number){
 	title = title.join('');
 	return title;
 }
+
 function grabHash(hash){
 	return hash.replace('#','');
 }
+
 function getComments(raw_id, comment_location){
 	// Retrieve and display comments
 	var id = raw_id.replace('t3_', '');
