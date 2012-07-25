@@ -5,7 +5,7 @@ $(function(){
 	// Bind click event handlers to our expanders and collapsers.
 	$('body').delegate(".expander", "click", function(){
 		if ($(this).parents('ul').first().find('.comments').is(':empty')){
-			$(this).parents('ul').first().find('.comments').html("<img src='img/load.gif' />"))
+			$(this).parents('ul').first().find('.comments').text("<img src='img/load.gif' />");
 			getComments($(this).attr('id'), $(this).parents('ul').first().find('.comments'));
 		}
 		else {
