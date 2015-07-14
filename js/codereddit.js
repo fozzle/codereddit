@@ -92,7 +92,7 @@ session_start();</pre>"
 							code_templ = code_templ.replace("${author}", true_entry.author);
 							code_templ = code_templ.replace("${score}", true_entry.score);
 							code_templ = code_templ.replace("${domain}", true_entry.domain);
-							code_templ = code_templ.replace("${fulltitle}", true_entry.title);
+							code_templ = code_templ.replace("${fulltitle}", true_entry.title.replace(/"/g, "&quot;"));
 							code_templ = code_templ.replace("${num_comments}", true_entry.num_comments);
 							code_templ = code_templ.replace("${entry_id}", true_entry.name);
 							$('body').append(code_templ);
