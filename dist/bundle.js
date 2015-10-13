@@ -52,9 +52,9 @@
 
 	var _react2 = _interopRequireDefault(_react);
 
-	var _hello = __webpack_require__(157);
+	var _codereddit = __webpack_require__(157);
 
-	var _hello2 = _interopRequireDefault(_hello);
+	var _codereddit2 = _interopRequireDefault(_codereddit);
 
 	var _about = __webpack_require__(368);
 
@@ -68,9 +68,9 @@
 	  _react2['default'].createElement(
 	    _reactRouter.Route,
 	    { path: '/' },
-	    _react2['default'].createElement(_reactRouter.IndexRoute, { component: _hello2['default'] }),
+	    _react2['default'].createElement(_reactRouter.IndexRoute, { component: _codereddit2['default'] }),
 	    _react2['default'].createElement(_reactRouter.Route, { path: 'about', component: _about2['default'] }),
-	    _react2['default'].createElement(_reactRouter.Route, { path: '/:subreddit', component: _hello2['default'] })
+	    _react2['default'].createElement(_reactRouter.Route, { path: '/:subreddit', component: _codereddit2['default'] })
 	  )
 	), document.getElementById('content'));
 

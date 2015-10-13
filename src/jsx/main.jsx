@@ -1,7 +1,7 @@
 'use strict';
 
 import React from 'react';
-import CodeReddit from './hello';
+import CodeReddit from './codereddit';
 import About from './about';
 import { Router, Route, IndexRoute } from 'react-router';
 
