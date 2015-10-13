@@ -1,3 +1,5 @@
+'use strict';
+
 let React = require('react');
 
 let Comment = React.createClass({

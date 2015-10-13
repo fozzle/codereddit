@@ -27,14 +27,15 @@ module.exports = React.createClass({
     },
     toggleComments: function () {
       if (this.state.comments.length) {
-        this.setState({comments: []});
+        this.setState({comments: [], loading: false});
       } else {
+        this.setState({loading: true});
         axios.get('http://www.reddit.com/comments/' + this.props.id + '.json')
         .then(response => {
-          setTimeout(x => this.setState({comments: response.data[1].data.children}), 0);
+          setTimeout(x => this.setState({comments: response.data[1].data.children, loading: false}), 0);
         })
         .catch(response => {
-          this.setState({comments: []});
+          this.setState({comments: [], loading: false});
         });
       }
 
@@ -53,6 +54,7 @@ module.exports = React.createClass({
             <Comment key={childComment.data.id} children={children} author={childComment.data.author} score={childComment.data.score} text={childComment.data.body} space={"  "} />
         );
       });
+      let loadingNode = <Comment author={`CodeReddit-system`} score={1337} children={[]} text={`Loading comments...`} space={"  "}></Comment>;
       let linkNode = <Link to={`/${this.props.subreddit}`}>{this.props.subreddit}</Link>;
       return (
         <pre>
@@ -62,12 +64,12 @@ module.exports = React.createClass({
             {'  '}$fullTitle = "{this.props.title}";<br/><br/>
             {'  '}// Click to load comments{'\n'}
             {'  '}<a onClick={this.toggleComments}>for ($numComments = 0; $numComments {'<'}= {this.props.num_comments}; $numComments++){' {'}</a><br/>
-            {'  '}{commentNodes}<br/>
+          {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
             {'  }'}<br/>
           {'}'}
           <br/>
           <br/>
         </pre>
-      )
+      );
     }
 });
