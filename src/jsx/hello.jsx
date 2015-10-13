@@ -1,21 +1,30 @@
+'use strict';
+
 require("style!css!../../node_modules/highlight.js/styles/default.css");
 require("style!css!../css/reset.css");
 
-let React = require('react');
-let axios = require('axios');
-let Post = require('./post');
-let Highlight = require('highlight.js');
+import React from 'react';
+import axios from 'axios';
+import Post from './post';
+import Highlight from 'highlight.js';
+import {Link} from 'react-router';
 
 module.exports = React.createClass({
     displayName: 'CodeReddit',
     getInitialState: function() {
-      return {data: [], subreddit: 'frontpage'};
+      return {data: [], loading: true, subreddit: this.props.params.subreddit || 'frontpage'};
     },
     componentDidMount: function() {
-      this.retrieveData('frontpage');
+      this.retrieveData();
+    },
+    componentWillReceiveProps: function(nextProps) {
+      this.setState({subreddit: nextProps.params.subreddit || 'frontpage'});
     },
     componentDidUpdate: function (prevProps, prevState) {
       this.highlightCode();
+      if (prevState.subreddit !== this.state.subreddit) {
+        this.retrieveData();
+      }
     },
     highlightCode: function() {
       let domNode = this.getDOMNode();
@@ -26,38 +35,41 @@ module.exports = React.createClass({
         }
       }
     },
-    switchSubreddit: function(event) {
-        this.retrieveData(event.target.innerHTML);
-    },
-    retrieveData: function(subreddit) {
+    retrieveData: function() {
       let url = "http://www.reddit.com/";
+      let subreddit = this.state.subreddit;
       if (subreddit === 'frontpage') {
         url += ".json";
       } else {
-        url += "r/" + subreddit + ".json"
+        url += "r/" + subreddit + ".json";
       }
+      this.setState({loading: true});
       axios.get(url)
         .then(function(response) {
-            this.setState({data: response.data.data.children, subreddit: subreddit});
+            this.setState({data: response.data.data.children, loading: false});
         }.bind(this))
         .catch(function(response) {
-            this.setState({error: "error"});
+            this.setState({error: "error", loading: false});
         }.bind(this));
     },
     render: function() {
-      var postNodes = this.state.data.map(post => {
+      var postNodes = this.state.data.map((post, i) => {
         return (
-          <Post {...post.data} subredditHandler={this.switchSubreddit} />
+          <Post {...post.data} key={i} subredditHandler={this.switchSubreddit} />
         );
       });
+
+      var loadingNode = (`function loadingRedditPosts() {
+  // Please be patient!
+}`);
       return (
           <pre>
             <code className='php'>
-              <a href="about.html">require('readme.php');</a><br/>
-              $location = "{this.state.subreddit}";<br/>
+              <Link to={`about`}>require('readme.php');</Link><br/>
+              <Link to={`/`}>$location</Link> = "{this.state.subreddit}";<br/>
               $language = <a onClick={this.handleLanguage}>"php"</a>;<br/>
               <br/>
-              {postNodes}
+              {this.state.loading ? loadingNode : postNodes}
             </code>
           </pre>
       );

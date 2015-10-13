@@ -1,9 +1,16 @@
-'use strict'
+'use strict';
 
-var React = require('react');
-var CodeReddit = require('./hello');
+import React from 'react';
+import CodeReddit from './hello';
+import About from './about';
+import { Router, Route, IndexRoute } from 'react-router';
 
-React.render(
-    <CodeReddit />,
-    document.getElementById('content')
+React.render((
+  <Router>
+    <Route path="/">
+      <IndexRoute component={CodeReddit}></IndexRoute>
+      <Route path="about" component={About}></Route>
+      <Route path="/:subreddit" component={CodeReddit}></Route>
+    </Route>
+  </Router>), document.getElementById('content')
 );

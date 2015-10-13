@@ -1,7 +1,10 @@
-let React = require('react');
-let axios = require('axios');
-let Comment = require('./comment');
-let Highlight = require('highlight.js');
+'use strict';
+
+import React from 'react';
+import axios from 'axios';
+import { Link } from 'react-router';
+import Comment from './comment';
+import Highlight from 'highlight.js';
 
 module.exports = React.createClass({
     displayName: 'CodeReddit Post',
@@ -50,9 +53,10 @@ module.exports = React.createClass({
             <Comment key={childComment.data.id} children={children} author={childComment.data.author} score={childComment.data.score} text={childComment.data.body} space={"  "} />
         );
       });
+      let linkNode = <Link to={`/${this.props.subreddit}`}>{this.props.subreddit}</Link>;
       return (
         <pre>
-          function {this.shortenedTitle()}($score={this.props.score}, $subreddit="<a onClick={this.props.subredditHandler}>{this.props.subreddit}</a>"){' {'}<br/>
+          function {this.shortenedTitle()}($score={this.props.score}, $subreddit="{linkNode}"){' {'}<br/>
             {'  '}$author = "{this.props.author}";<br/>
             {'  '}$link = <a href={this.props.url}>"{this.props.url}"</a>;<br/>
             {'  '}$fullTitle = "{this.props.title}";<br/><br/>

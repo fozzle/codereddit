@@ -19,6 +19,7 @@
   "dependencies": {
     "axios": "^0.5.4",
     "highlight.js": "^8.5.0",
-    "react": "^0.13.1"
+    "react": "^0.13.1",
+    "react-router": "^1.0.0-rc3"
   }
 }
