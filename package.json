@@ -1,0 +1,24 @@
+{
+  "name": "codereddit-react",
+  "version": "0.0.0",
+  "description": "CodeReddit.net in React Form",
+  "main": "main.js",
+  "devDependencies": {
+    "babel-core": "^5.0.10",
+    "babel-loader": "^5.0.0",
+    "css-loader": "^0.10.1",
+    "style-loader": "^0.10.1",
+    "webpack": "^1.8.0",
+    "webpack-dev-server": "^1.8.0"
+  },
+  "scripts": {
+    "start": "webpack"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.5.4",
+    "highlight.js": "^8.5.0",
+    "react": "^0.13.1"
+  }
+}
