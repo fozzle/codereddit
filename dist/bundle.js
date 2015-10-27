@@ -20478,24 +20478,34 @@
 
 	var _reactRouter = __webpack_require__(178);
 
-	__webpack_require__(362);
+	__webpack_require__(369);
 	__webpack_require__(366);
+
+	var LANGS = ['php', 'javascript', 'python', 'java'];
 
 	module.exports = _react2["default"].createClass({
 	  displayName: 'CodeReddit',
 	  getInitialState: function getInitialState() {
-	    return { data: [], loading: true, subreddit: this.props.params.subreddit || 'frontpage' };
+	    return {
+	      data: [],
+	      loading: true,
+	      subreddit: this.props.params.subreddit || 'frontpage',
+	      lang: this.props.location.query.lang || LANGS[0]
+	    };
 	  },
 	  componentDidMount: function componentDidMount() {
 	    this.retrieveData();
 	  },
 	  componentWillReceiveProps: function componentWillReceiveProps(nextProps) {
-	    this.setState({ subreddit: nextProps.params.subreddit || 'frontpage' });
+	    this.setState({ subreddit: nextProps.params.subreddit || 'frontpage', lang: nextProps.location.query.lang });
 	  },
 	  componentDidUpdate: function componentDidUpdate(prevProps, prevState) {
 	    this.highlightCode();
 	    if (prevState.subreddit !== this.state.subreddit) {
 	      this.retrieveData();
+	    }
+	    if (prevState.lang !== this.state.lang) {
+	      // Reload UI
 	    }
 	  },
 	  highlightCode: function highlightCode() {
@@ -20522,47 +20532,164 @@
 	      this.setState({ error: "error", loading: false });
 	    }).bind(this));
 	  },
+	  handleLanguageChange: function handleLanguageChange() {
+	    var langIndex = (LANGS.indexOf(this.state.lang) + 1) % LANGS.length;
+	    this.props.history.pushState(null, '/', { lang: LANGS[langIndex] });
+	  },
 	  render: function render() {
 	    var _this = this;
 
 	    var postNodes = this.state.data.map(function (post, i) {
-	      return _react2["default"].createElement(_post2["default"], _extends({}, post.data, { key: i, subredditHandler: _this.switchSubreddit }));
+	      return _react2["default"].createElement(_post2["default"], _extends({}, post.data, { key: i, subredditHandler: _this.switchSubreddit, lang: _this.state.lang }));
 	    });
 
 	    var loadingNode = "function loadingRedditPosts() {\n  // Please be patient!\n}";
-	    return _react2["default"].createElement(
-	      "pre",
-	      null,
-	      _react2["default"].createElement(
-	        "code",
-	        { className: "php" },
-	        _react2["default"].createElement(
-	          _reactRouter.Link,
-	          { to: "about" },
-	          "require('readme.php');"
-	        ),
-	        _react2["default"].createElement("br", null),
-	        _react2["default"].createElement(
-	          _reactRouter.Link,
-	          { to: "/" },
-	          "$location"
-	        ),
-	        " = \"",
-	        this.state.subreddit,
-	        "\";",
-	        _react2["default"].createElement("br", null),
-	        "$language = ",
-	        _react2["default"].createElement(
-	          "a",
-	          { onClick: this.handleLanguage },
-	          "\"php\""
-	        ),
-	        ";",
-	        _react2["default"].createElement("br", null),
-	        _react2["default"].createElement("br", null),
-	        this.state.loading ? loadingNode : postNodes
-	      )
-	    );
+	    switch (this.state.lang) {
+	      case 'php':
+	        return _react2["default"].createElement(
+	          "pre",
+	          null,
+	          _react2["default"].createElement(
+	            "code",
+	            { className: this.state.lang },
+	            _react2["default"].createElement(
+	              _reactRouter.Link,
+	              { to: "about" },
+	              "require('readme.php');"
+	            ),
+	            _react2["default"].createElement("br", null),
+	            _react2["default"].createElement(
+	              _reactRouter.Link,
+	              { to: "/?lang=" + this.state.lang },
+	              "$location"
+	            ),
+	            " = \"",
+	            this.state.subreddit,
+	            "\";",
+	            _react2["default"].createElement("br", null),
+	            "$language = ",
+	            _react2["default"].createElement(
+	              "a",
+	              { onClick: this.handleLanguageChange },
+	              "\"",
+	              this.state.lang,
+	              "\""
+	            ),
+	            ";",
+	            _react2["default"].createElement("br", null),
+	            _react2["default"].createElement("br", null),
+	            this.state.loading ? loadingNode : postNodes
+	          )
+	        );
+	      case 'javascript':
+	        return _react2["default"].createElement(
+	          "pre",
+	          null,
+	          _react2["default"].createElement(
+	            "code",
+	            { className: this.state.lang },
+	            _react2["default"].createElement(
+	              _reactRouter.Link,
+	              { to: "about" },
+	              "import Readme from 'readme';"
+	            ),
+	            _react2["default"].createElement("br", null),
+	            _react2["default"].createElement(
+	              _reactRouter.Link,
+	              { to: "/?lang=" + this.state.lang },
+	              "var location"
+	            ),
+	            " = \"",
+	            this.state.subreddit,
+	            "\";",
+	            _react2["default"].createElement("br", null),
+	            "var language = ",
+	            _react2["default"].createElement(
+	              "a",
+	              { onClick: this.handleLanguageChange },
+	              "\"",
+	              this.state.lang,
+	              "\""
+	            ),
+	            ";",
+	            _react2["default"].createElement("br", null),
+	            _react2["default"].createElement("br", null),
+	            this.state.loading ? loadingNode : postNodes
+	          )
+	        );
+	      case 'python':
+	        return _react2["default"].createElement(
+	          "pre",
+	          null,
+	          _react2["default"].createElement(
+	            "code",
+	            { className: this.state.lang },
+	            _react2["default"].createElement(
+	              _reactRouter.Link,
+	              { to: "about" },
+	              "from readme import *"
+	            ),
+	            _react2["default"].createElement("br", null),
+	            _react2["default"].createElement(
+	              _reactRouter.Link,
+	              { to: "/?lang=" + this.state.lang },
+	              "location"
+	            ),
+	            " = \"",
+	            this.state.subreddit,
+	            "\"",
+	            _react2["default"].createElement("br", null),
+	            "language = ",
+	            _react2["default"].createElement(
+	              "a",
+	              { onClick: this.handleLanguageChange },
+	              "\"",
+	              this.state.lang,
+	              "\""
+	            ),
+	            ";",
+	            _react2["default"].createElement("br", null),
+	            _react2["default"].createElement("br", null),
+	            this.state.loading ? loadingNode : postNodes
+	          )
+	        );
+	      case 'java':
+	        return _react2["default"].createElement(
+	          "pre",
+	          null,
+	          _react2["default"].createElement(
+	            "code",
+	            { className: this.state.lang },
+	            _react2["default"].createElement(
+	              _reactRouter.Link,
+	              { to: "about" },
+	              "import com.codereddit.Readme;"
+	            ),
+	            _react2["default"].createElement("br", null),
+	            _react2["default"].createElement(
+	              _reactRouter.Link,
+	              { to: "/?lang=" + this.state.lang },
+	              "String location"
+	            ),
+	            " = \"",
+	            this.state.subreddit,
+	            "\";",
+	            _react2["default"].createElement("br", null),
+	            "String language = ",
+	            _react2["default"].createElement(
+	              "a",
+	              { onClick: this.handleLanguageChange },
+	              "\"",
+	              this.state.lang,
+	              "\""
+	            ),
+	            ";",
+	            _react2["default"].createElement("br", null),
+	            _react2["default"].createElement("br", null),
+	            this.state.loading ? loadingNode : postNodes
+	          )
+	        );
+	    }
 	  }
 	});
 
@@ -22617,74 +22744,256 @@
 	    return title;
 	  },
 	  render: function render() {
+	    var _this2 = this;
+
 	    var commentNodes = this.state.comments.map(function (childComment) {
 	      var children = childComment.data.replies ? childComment.data.replies.data.children : [];
-	      return _react2['default'].createElement(_comment2['default'], { key: childComment.data.id, children: children, author: childComment.data.author, score: childComment.data.score, text: childComment.data.body, space: "  " });
+	      return _react2['default'].createElement(_comment2['default'], { lang: _this2.props.lang, key: childComment.data.id, children: children, author: childComment.data.author, score: childComment.data.score, text: childComment.data.body, space: "  " });
 	    });
-	    var loadingNode = _react2['default'].createElement(_comment2['default'], { author: 'CodeReddit-system', score: 1337, children: [], text: 'Loading comments...', space: "  " });
+	    var loadingNode = _react2['default'].createElement(_comment2['default'], { lang: this.props.lang, author: 'CodeReddit-system', score: 1337, children: [], text: 'Loading comments...', space: "  " });
 	    var linkNode = _react2['default'].createElement(
 	      _reactRouter.Link,
-	      { to: '/' + this.props.subreddit },
+	      { to: '/' + this.props.subreddit + '?lang=' + this.props.lang },
 	      this.props.subreddit
 	    );
-	    return _react2['default'].createElement(
-	      'pre',
-	      null,
-	      'function ',
-	      this.shortenedTitle(),
-	      '($score=',
-	      this.props.score,
-	      ', $subreddit="',
-	      linkNode,
-	      '")',
-	      ' {',
-	      _react2['default'].createElement('br', null),
-	      '  ',
-	      '$author = "',
-	      this.props.author,
-	      '";',
-	      _react2['default'].createElement('br', null),
-	      '  ',
-	      '$link = ',
-	      _react2['default'].createElement(
-	        'a',
-	        { href: this.props.url },
-	        '"',
-	        this.props.url,
-	        '"'
-	      ),
-	      ';',
-	      _react2['default'].createElement('br', null),
-	      '  ',
-	      '$fullTitle = "',
-	      this.props.title,
-	      '";',
-	      _react2['default'].createElement('br', null),
-	      _react2['default'].createElement('br', null),
-	      '  ',
-	      '// Click to load comments',
-	      '\n',
-	      '  ',
-	      _react2['default'].createElement(
-	        'a',
-	        { onClick: this.toggleComments },
-	        'for ($numComments = 0; $numComments ',
-	        '<',
-	        '= ',
-	        this.props.num_comments,
-	        '; $numComments++)',
-	        ' {'
-	      ),
-	      _react2['default'].createElement('br', null),
-	      '  ',
-	      this.state.loading ? loadingNode : commentNodes,
-	      _react2['default'].createElement('br', null),
-	      '  }',
-	      _react2['default'].createElement('br', null),
-	      '}',
-	      _react2['default'].createElement('br', null),
-	      _react2['default'].createElement('br', null)
-	    );
+
+	    switch (this.props.lang) {
+	      case 'php':
+	        return _react2['default'].createElement(
+	          'pre',
+	          null,
+	          'function ',
+	          this.shortenedTitle(),
+	          '($score=',
+	          this.props.score,
+	          ', $subreddit="',
+	          linkNode,
+	          '")',
+	          ' {',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          '$author = "',
+	          this.props.author,
+	          '";',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          '$link = ',
+	          _react2['default'].createElement(
+	            'a',
+	            { href: this.props.url },
+	            '"',
+	            this.props.url,
+	            '"'
+	          ),
+	          ';',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          '$fullTitle = "',
+	          this.props.title,
+	          '";',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          '// Click to load comments',
+	          '\n',
+	          '  ',
+	          _react2['default'].createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            'for ($numComments = 0; $numComments ',
+	            '<',
+	            '= ',
+	            this.props.num_comments,
+	            '; $numComments++)',
+	            ' {'
+	          ),
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          this.state.loading ? loadingNode : commentNodes,
+	          _react2['default'].createElement('br', null),
+	          '  }',
+	          _react2['default'].createElement('br', null),
+	          '}',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null)
+	        );
+	      case 'javascript':
+	        return _react2['default'].createElement(
+	          'pre',
+	          null,
+	          'function ',
+	          this.shortenedTitle(),
+	          '(score=',
+	          this.props.score,
+	          ', subreddit="',
+	          linkNode,
+	          '")',
+	          ' {',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          'var author = "',
+	          this.props.author,
+	          '";',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          'var link = ',
+	          _react2['default'].createElement(
+	            'a',
+	            { href: this.props.url },
+	            '"',
+	            this.props.url,
+	            '"'
+	          ),
+	          ';',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          'var fullTitle = "',
+	          this.props.title,
+	          '";',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          '// Click to load comments',
+	          '\n',
+	          '  ',
+	          _react2['default'].createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            'for (var numComments = 0; numComments ',
+	            '<',
+	            '= ',
+	            this.props.num_comments,
+	            '; numComments++)',
+	            ' {'
+	          ),
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          this.state.loading ? loadingNode : commentNodes,
+	          _react2['default'].createElement('br', null),
+	          '  }',
+	          _react2['default'].createElement('br', null),
+	          '}',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null)
+	        );
+	      case 'python':
+	        return _react2['default'].createElement(
+	          'pre',
+	          null,
+	          'def ',
+	          this.shortenedTitle(),
+	          '(score=',
+	          this.props.score,
+	          ', subreddit="',
+	          linkNode,
+	          '"):',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          'author = "',
+	          this.props.author,
+	          '"',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          'link = ',
+	          _react2['default'].createElement(
+	            'a',
+	            { href: this.props.url },
+	            '"',
+	            this.props.url,
+	            '"'
+	          ),
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          'fullTitle = "',
+	          this.props.title,
+	          '"',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          '// Click to load comments',
+	          '\n',
+	          '  ',
+	          _react2['default'].createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            'for numComments in range(0, ',
+	            this.props.num_comments,
+	            '):'
+	          ),
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          this.state.loading ? loadingNode : commentNodes,
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null)
+	        );
+	      case 'java':
+	        return _react2['default'].createElement(
+	          'pre',
+	          null,
+	          'public void ',
+	          this.shortenedTitle(),
+	          '(int score, String subreddit)',
+	          ' {',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          'int finalScore = score > 0 ? score : ',
+	          this.props.score,
+	          ';',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          'String finalSubreddit = subreddit != null ? subreddit : "',
+	          linkNode,
+	          '";',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          'String author = "',
+	          this.props.author,
+	          '";',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          'String link = ',
+	          _react2['default'].createElement(
+	            'a',
+	            { href: this.props.url },
+	            '"',
+	            this.props.url,
+	            '"'
+	          ),
+	          ';',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          'String fullTitle = "',
+	          this.props.title,
+	          '";',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          '// Click to load comments',
+	          '\n',
+	          '  ',
+	          _react2['default'].createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            'for (int numComments = 0; numComments ',
+	            '<',
+	            '= ',
+	            this.props.num_comments,
+	            '; numComments++)',
+	            ' {'
+	          ),
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          this.state.loading ? loadingNode : commentNodes,
+	          _react2['default'].createElement('br', null),
+	          '  }',
+	          _react2['default'].createElement('br', null),
+	          '}',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null)
+	        );
+	    }
 	  }
 	});
 
@@ -27050,34 +27359,96 @@
 	      return '';
 	    }
 
+	    var commentChars = [];
+	    switch (this.props.lang) {
+	      case 'python':
+	        commentChars[0] = "'''";
+	        commentChars[1] = "'''";
+	        break;
+	      case 'php':
+	      case 'javascript':
+	      case 'java':
+	        commentChars[0] = "/*";
+	        commentChars[1] = "*/";
+	    }
+
 	    var text = this.props.text.replace(/(\r\n|\n|\r)/gm, ""),
-	        new_text = this.props.space + "/*\n",
+	        new_text = this.props.space + commentChars[0] + "\n",
 	        num_splits = Math.floor(text.length / 80);
 	    for (var i = 0; i <= num_splits; i++) {
 	      new_text = new_text + this.props.space + text.substring(i * 80, (i + 1) * 80).trim() + "\n";
 	    }
-	    return new_text + this.props.space + "*/";
+	    return new_text + this.props.space + commentChars[1];
 	  },
 	  render: function render() {
 	    var _this = this;
 
 	    var commentNodes = this.props.children.map(function (childComment) {
 	      var children = childComment.data.replies ? childComment.data.replies.data.children : [];
-	      return React.createElement(Comment, { key: childComment.data.id, children: children, author: childComment.data.author, score: childComment.data.score, text: childComment.data.body, space: _this.props.space + "  " });
+	      return React.createElement(Comment, { key: childComment.data.id, children: children, author: childComment.data.author, lang: _this.props.lang, score: childComment.data.score, text: childComment.data.body, space: _this.props.space + "  " });
 	    });
-	    return React.createElement(
-	      'pre',
-	      { className: 'comment php' },
-	      this.props.space,
-	      '$score = ',
-	      this.props.score,
-	      '; $author = "',
-	      this.props.author,
-	      '";',
-	      React.createElement('br', null),
-	      this.formatCommentText(),
-	      commentNodes
-	    );
+
+	    switch (this.props.lang) {
+	      case 'php':
+	        return React.createElement(
+	          'pre',
+	          { className: 'comment {this.props.lang}' },
+	          this.props.space,
+	          '$score = ',
+	          this.props.score,
+	          '; $author = "',
+	          this.props.author,
+	          '";',
+	          React.createElement('br', null),
+	          this.formatCommentText(),
+	          commentNodes
+	        );
+	      case 'javascript':
+	        return React.createElement(
+	          'pre',
+	          { className: 'comment {this.props.lang}' },
+	          this.props.space,
+	          'var score = ',
+	          this.props.score,
+	          ', author = "',
+	          this.props.author,
+	          '";',
+	          React.createElement('br', null),
+	          this.formatCommentText(),
+	          commentNodes
+	        );
+	      case 'python':
+	        return React.createElement(
+	          'pre',
+	          { className: 'comment {this.props.lang}' },
+	          this.props.space,
+	          'score = ',
+	          this.props.score,
+	          ', author = "',
+	          this.props.author,
+	          '"',
+	          React.createElement('br', null),
+	          this.formatCommentText(),
+	          commentNodes
+	        );
+	      case 'java':
+	        return React.createElement(
+	          'pre',
+	          { className: 'comment {this.props.lang}' },
+	          this.props.space,
+	          'int score = ',
+	          this.props.score,
+	          ';',
+	          React.createElement('br', null),
+	          this.props.space,
+	          'String author = "',
+	          this.props.author,
+	          '";',
+	          React.createElement('br', null),
+	          this.formatCommentText(),
+	          commentNodes
+	        );
+	    }
 	  }
 	});
 
@@ -41096,36 +41467,8 @@
 	};
 
 /***/ },
-/* 362 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-
-	// load the styles
-	var content = __webpack_require__(363);
-	if(typeof content === 'string') content = [[module.id, content, '']];
-	// add the styles to the DOM
-	var update = __webpack_require__(365)(content, {});
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		module.hot.accept("!!./../../css-loader/index.js!./default.css", function() {
-			var newContent = require("!!./../../css-loader/index.js!./default.css");
-			if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-			update(newContent);
-		});
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
-	}
-
-/***/ },
-/* 363 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(364)();
-	exports.push([module.id, "/*\n\nOriginal style from softwaremaniacs.org (c) Ivan Sagalaev <Maniac@SoftwareManiacs.Org>\n\n*/\n\n.hljs {\n  display: block;\n  overflow-x: auto;\n  padding: 0.5em;\n  background: #f0f0f0;\n  -webkit-text-size-adjust: none;\n}\n\n.hljs,\n.hljs-subst,\n.hljs-tag .hljs-title,\n.nginx .hljs-title {\n  color: black;\n}\n\n.hljs-string,\n.hljs-title,\n.hljs-constant,\n.hljs-parent,\n.hljs-tag .hljs-value,\n.hljs-rule .hljs-value,\n.hljs-preprocessor,\n.hljs-pragma,\n.hljs-name,\n.haml .hljs-symbol,\n.ruby .hljs-symbol,\n.ruby .hljs-symbol .hljs-string,\n.hljs-template_tag,\n.django .hljs-variable,\n.smalltalk .hljs-class,\n.hljs-addition,\n.hljs-flow,\n.hljs-stream,\n.bash .hljs-variable,\n.pf .hljs-variable,\n.apache .hljs-tag,\n.apache .hljs-cbracket,\n.tex .hljs-command,\n.tex .hljs-special,\n.erlang_repl .hljs-function_or_atom,\n.asciidoc .hljs-header,\n.markdown .hljs-header,\n.coffeescript .hljs-attribute,\n.tp .hljs-variable {\n  color: #800;\n}\n\n.smartquote,\n.hljs-comment,\n.hljs-annotation,\n.diff .hljs-header,\n.hljs-chunk,\n.asciidoc .hljs-blockquote,\n.markdown .hljs-blockquote {\n  color: #888;\n}\n\n.hljs-number,\n.hljs-date,\n.hljs-regexp,\n.hljs-literal,\n.hljs-hexcolor,\n.smalltalk .hljs-symbol,\n.smalltalk .hljs-char,\n.go .hljs-constant,\n.hljs-change,\n.lasso .hljs-variable,\n.makefile .hljs-variable,\n.asciidoc .hljs-bullet,\n.markdown .hljs-bullet,\n.asciidoc .hljs-link_url,\n.markdown .hljs-link_url {\n  color: #080;\n}\n\n.hljs-label,\n.ruby .hljs-string,\n.hljs-decorator,\n.hljs-filter .hljs-argument,\n.hljs-localvars,\n.hljs-array,\n.hljs-attr_selector,\n.hljs-important,\n.hljs-pseudo,\n.hljs-pi,\n.haml .hljs-bullet,\n.hljs-doctype,\n.hljs-deletion,\n.hljs-envvar,\n.hljs-shebang,\n.apache .hljs-sqbracket,\n.nginx .hljs-built_in,\n.tex .hljs-formula,\n.erlang_repl .hljs-reserved,\n.hljs-prompt,\n.asciidoc .hljs-link_label,\n.markdown .hljs-link_label,\n.vhdl .hljs-attribute,\n.clojure .hljs-attribute,\n.asciidoc .hljs-attribute,\n.lasso .hljs-attribute,\n.coffeescript .hljs-property,\n.hljs-phony {\n  color: #88f;\n}\n\n.hljs-keyword,\n.hljs-id,\n.hljs-title,\n.hljs-built_in,\n.css .hljs-tag,\n.hljs-doctag,\n.smalltalk .hljs-class,\n.hljs-winutils,\n.bash .hljs-variable,\n.pf .hljs-variable,\n.apache .hljs-tag,\n.hljs-type,\n.hljs-typename,\n.tex .hljs-command,\n.asciidoc .hljs-strong,\n.markdown .hljs-strong,\n.hljs-request,\n.hljs-status,\n.tp .hljs-data,\n.tp .hljs-io {\n  font-weight: bold;\n}\n\n.asciidoc .hljs-emphasis,\n.markdown .hljs-emphasis,\n.tp .hljs-units {\n  font-style: italic;\n}\n\n.nginx .hljs-built_in {\n  font-weight: normal;\n}\n\n.coffeescript .javascript,\n.javascript .xml,\n.lasso .markup,\n.tex .hljs-formula,\n.xml .javascript,\n.xml .vbscript,\n.xml .css,\n.xml .hljs-cdata {\n  opacity: 0.5;\n}\n", ""]);
-
-/***/ },
+/* 362 */,
+/* 363 */,
 /* 364 */
 /***/ function(module, exports) {
 
@@ -41494,6 +41837,36 @@
 	});
 
 	module.exports = About;
+
+/***/ },
+/* 369 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// style-loader: Adds some css to the DOM by adding a <style> tag
+
+	// load the styles
+	var content = __webpack_require__(370);
+	if(typeof content === 'string') content = [[module.id, content, '']];
+	// add the styles to the DOM
+	var update = __webpack_require__(365)(content, {});
+	// Hot Module Replacement
+	if(false) {
+		// When the styles change, update the <style> tags
+		module.hot.accept("!!./../../css-loader/index.js!./zenburn.css", function() {
+			var newContent = require("!!./../../css-loader/index.js!./zenburn.css");
+			if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
+			update(newContent);
+		});
+		// When the module is disposed, remove the <style> tags
+		module.hot.dispose(function() { update(); });
+	}
+
+/***/ },
+/* 370 */
+/***/ function(module, exports, __webpack_require__) {
+
+	exports = module.exports = __webpack_require__(364)();
+	exports.push([module.id, "/*\n\nZenburn style from voldmar.ru (c) Vladimir Epifanov <voldmar@voldmar.ru>\nbased on dark.css by Ivan Sagalaev\n\n*/\n\n.hljs {\n  display: block;\n  overflow-x: auto;\n  padding: 0.5em;\n  background: #3f3f3f;\n  color: #dcdcdc;\n  -webkit-text-size-adjust: none;\n}\n\n.hljs-keyword,\n.hljs-tag,\n.css .hljs-class,\n.css .hljs-id,\n.lisp .hljs-title,\n.nginx .hljs-title,\n.hljs-request,\n.hljs-status,\n.clojure .hljs-attribute {\n  color: #e3ceab;\n}\n\n.django .hljs-template_tag,\n.django .hljs-variable,\n.django .hljs-filter .hljs-argument {\n  color: #dcdcdc;\n}\n\n.hljs-number,\n.hljs-date {\n  color: #8cd0d3;\n}\n\n.dos .hljs-envvar,\n.dos .hljs-stream,\n.hljs-variable,\n.apache .hljs-sqbracket,\n.hljs-name {\n  color: #efdcbc;\n}\n\n.dos .hljs-flow,\n.diff .hljs-change,\n.python .exception,\n.python .hljs-built_in,\n.hljs-literal,\n.tex .hljs-special {\n  color: #efefaf;\n}\n\n.diff .hljs-chunk,\n.hljs-subst {\n  color: #8f8f8f;\n}\n\n.dos .hljs-keyword,\n.hljs-decorator,\n.hljs-title,\n.hljs-type,\n.diff .hljs-header,\n.ruby .hljs-class .hljs-parent,\n.apache .hljs-tag,\n.nginx .hljs-built_in,\n.tex .hljs-command,\n.hljs-prompt {\n  color: #efef8f;\n}\n\n.dos .hljs-winutils,\n.ruby .hljs-symbol,\n.ruby .hljs-symbol .hljs-string,\n.ruby .hljs-string {\n  color: #dca3a3;\n}\n\n.diff .hljs-deletion,\n.hljs-string,\n.hljs-tag .hljs-value,\n.hljs-preprocessor,\n.hljs-pragma,\n.hljs-built_in,\n.smalltalk .hljs-class,\n.smalltalk .hljs-localvars,\n.smalltalk .hljs-array,\n.css .hljs-rule .hljs-value,\n.hljs-attr_selector,\n.hljs-pseudo,\n.apache .hljs-cbracket,\n.tex .hljs-formula,\n.coffeescript .hljs-attribute {\n  color: #cc9393;\n}\n\n.hljs-shebang,\n.diff .hljs-addition,\n.hljs-comment,\n.hljs-annotation,\n.hljs-pi,\n.hljs-doctype {\n  color: #7f9f7f;\n}\n\n.coffeescript .javascript,\n.javascript .xml,\n.tex .hljs-formula,\n.xml .javascript,\n.xml .vbscript,\n.xml .css,\n.xml .hljs-cdata {\n  opacity: 0.5;\n}\n\n", ""]);
 
 /***/ }
 /******/ ]);

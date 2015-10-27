@@ -51,25 +51,79 @@ module.exports = React.createClass({
       let commentNodes = this.state.comments.map(childComment => {
         let children = childComment.data.replies ? childComment.data.replies.data.children : [];
         return (
-            <Comment key={childComment.data.id} children={children} author={childComment.data.author} score={childComment.data.score} text={childComment.data.body} space={"  "} />
+            <Comment lang={this.props.lang} key={childComment.data.id} children={children} author={childComment.data.author} score={childComment.data.score} text={childComment.data.body} space={"  "} />
         );
       });
-      let loadingNode = <Comment author={`CodeReddit-system`} score={1337} children={[]} text={`Loading comments...`} space={"  "}></Comment>;
-      let linkNode = <Link to={`/${this.props.subreddit}`}>{this.props.subreddit}</Link>;
-      return (
-        <pre>
-          function {this.shortenedTitle()}($score={this.props.score}, $subreddit="{linkNode}"){' {'}<br/>
-            {'  '}$author = "{this.props.author}";<br/>
-            {'  '}$link = <a href={this.props.url}>"{this.props.url}"</a>;<br/>
-            {'  '}$fullTitle = "{this.props.title}";<br/><br/>
-            {'  '}// Click to load comments{'\n'}
-            {'  '}<a onClick={this.toggleComments}>for ($numComments = 0; $numComments {'<'}= {this.props.num_comments}; $numComments++){' {'}</a><br/>
-          {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
-            {'  }'}<br/>
-          {'}'}
-          <br/>
-          <br/>
-        </pre>
-      );
+      let loadingNode = <Comment lang={this.props.lang} author={`CodeReddit-system`} score={1337} children={[]} text={`Loading comments...`} space={"  "}></Comment>;
+      let linkNode = <Link to={`/${this.props.subreddit}?lang=${this.props.lang}` }>{this.props.subreddit}</Link>;
+
+      switch (this.props.lang) {
+        case 'php':
+          return (
+            <pre>
+              function {this.shortenedTitle()}($score={this.props.score}, $subreddit="{linkNode}"){' {'}<br/>
+                {'  '}$author = "{this.props.author}";<br/>
+                {'  '}$link = <a href={this.props.url}>"{this.props.url}"</a>;<br/>
+                {'  '}$fullTitle = "{this.props.title}";<br/><br/>
+                {'  '}// Click to load comments{'\n'}
+                {'  '}<a onClick={this.toggleComments}>for ($numComments = 0; $numComments {'<'}= {this.props.num_comments}; $numComments++){' {'}</a><br/>
+              {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
+                {'  }'}<br/>
+              {'}'}
+              <br/>
+              <br/>
+            </pre>
+          );
+        case 'javascript':
+          return (
+            <pre>
+              function {this.shortenedTitle()}(score={this.props.score}, subreddit="{linkNode}"){' {'}<br/>
+                {'  '}var author = "{this.props.author}";<br/>
+                {'  '}var link = <a href={this.props.url}>"{this.props.url}"</a>;<br/>
+                {'  '}var fullTitle = "{this.props.title}";<br/><br/>
+                {'  '}// Click to load comments{'\n'}
+                {'  '}<a onClick={this.toggleComments}>for (var numComments = 0; numComments {'<'}= {this.props.num_comments}; numComments++){' {'}</a><br/>
+              {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
+                {'  }'}<br/>
+              {'}'}
+              <br/>
+              <br/>
+            </pre>
+          );
+        case 'python':
+          return (
+            <pre>
+              def {this.shortenedTitle()}(score={this.props.score}, subreddit="{linkNode}"):<br/>
+                {'  '}author = "{this.props.author}"<br/>
+                {'  '}link = <a href={this.props.url}>"{this.props.url}"</a><br/>
+                {'  '}fullTitle = "{this.props.title}"<br/><br/>
+                {'  '}// Click to load comments{'\n'}
+                {'  '}<a onClick={this.toggleComments}>for numComments in range(0, {this.props.num_comments}):</a><br/>
+              {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
+                <br/>
+              <br/>
+              <br/>
+            </pre>
+          );
+        case 'java':
+        return (
+          <pre>
+            public void {this.shortenedTitle()}(int score, String subreddit){' {'}<br/>
+              {'  '}int finalScore = score > 0 ? score : {this.props.score};<br/>
+              {'  '}String finalSubreddit = subreddit != null ? subreddit : "{linkNode}";<br/>
+              {'  '}String author = "{this.props.author}";<br/>
+              {'  '}String link = <a href={this.props.url}>"{this.props.url}"</a>;<br/>
+              {'  '}String fullTitle = "{this.props.title}";<br/><br/>
+              {'  '}// Click to load comments{'\n'}
+              {'  '}<a onClick={this.toggleComments}>for (int numComments = 0; numComments {'<'}= {this.props.num_comments}; numComments++){' {'}</a><br/>
+            {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
+              {'  }'}<br/>
+            {'}'}
+            <br/>
+            <br/>
+          </pre>
+        );
+      }
+
     }
 });
