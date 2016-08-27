@@ -4,13 +4,15 @@ import React from 'react';
 import axios from 'axios';
 import { Link } from 'react-router';
 import Comment from './comment';
+import Preview from './preview';
 import Highlight from 'highlight.js';
 
 module.exports = React.createClass({
     displayName: 'CodeReddit Post',
     getInitialState: function () {
       return {
-        comments: []
+        comments: [],
+        showPreview: false
       };
     },
     componentDidUpdate: function (prevProps, prevState) {
@@ -18,12 +20,12 @@ module.exports = React.createClass({
     },
     highlightCode: function() {
       let domNode = this.getDOMNode();
-      let nodes = domNode.querySelectorAll('.comment');
-      if (nodes.length > 0) {
-        for (let i = 0; i < nodes.length; i=i+1) {
-          Highlight.highlightBlock(nodes[i]);
-        }
+      let comments = domNode.querySelectorAll('.comment');
+
+      for (let i = 0; i < comments.length; i++) {
+        Highlight.highlightBlock(comments[i]);
       }
+
     },
     toggleComments: function () {
       if (this.state.comments.length) {
@@ -39,6 +41,13 @@ module.exports = React.createClass({
         });
       }
 
+    },
+    togglePreview: function() {
+      if(this.state.showPreview == true) {
+        this.setState({showPreview:false});
+      } else {
+        this.setState({showPreview:true});
+      }
     },
     shortenedTitle: function() {
       let titleTokens = this.props.title.toLowerCase().substring(0,20).replace(/[^A-Za-z0-9\s\s+]/gi, '').split(' ');
@@ -56,6 +65,7 @@ module.exports = React.createClass({
       });
       let loadingNode = <Comment lang={this.props.lang} author={`CodeReddit-system`} score={1337} children={[]} text={`Loading comments...`} space={"  "}></Comment>;
       let linkNode = <Link to={`/${this.props.subreddit}?lang=${this.props.lang}` }>{this.props.subreddit}</Link>;
+      let preview = <Preview url={this.props.url} selfText={this.props.selftext} lang={this.props.lang}  space={"  "}></Preview>;
 
       switch (this.props.lang) {
         case 'php':
@@ -63,8 +73,10 @@ module.exports = React.createClass({
             <pre>
               function {this.shortenedTitle()}($score={this.props.score}, $subreddit="{linkNode}"){' {'}<br/>
                 {'  '}$author = "{this.props.author}";<br/>
-                {'  '}$link = <a href={this.props.url}>"{this.props.url}"</a>;<br/>
+                {'  '}$link = <a href={this.props.url} target="_blank">"{this.props.url}"</a>;<br/>
                 {'  '}$fullTitle = "{this.props.title}";<br/><br/>
+                {'  '}$preview = <a onClick={this.togglePreview}>"toggle"</a>;<br/>{this.state.showPreview ? preview : ''}<br/>
+                {'  '}<br/>
                 {'  '}// Click to load comments{'\n'}
                 {'  '}<a onClick={this.toggleComments}>for ($numComments = 0; $numComments {'<'}= {this.props.num_comments}; $numComments++){' {'}</a><br/>
               {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
@@ -81,6 +93,7 @@ module.exports = React.createClass({
                 {'  '}var author = "{this.props.author}";<br/>
                 {'  '}var link = <a href={this.props.url}>"{this.props.url}"</a>;<br/>
                 {'  '}var fullTitle = "{this.props.title}";<br/><br/>
+                {'  '}var preview = <a onClick={this.togglePreview}>"toggle"</a>;<br/>{this.state.showPreview ? preview : ''}<br/><br/>
                 {'  '}// Click to load comments{'\n'}
                 {'  '}<a onClick={this.toggleComments}>for (var numComments = 0; numComments {'<'}= {this.props.num_comments}; numComments++){' {'}</a><br/>
               {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
@@ -97,6 +110,7 @@ module.exports = React.createClass({
                 {'  '}author = "{this.props.author}"<br/>
                 {'  '}link = <a href={this.props.url}>"{this.props.url}"</a><br/>
                 {'  '}fullTitle = "{this.props.title}"<br/><br/>
+                {'  '}var preview = <a onClick={this.togglePreview}>"toggle"</a>;<br/>{this.state.showPreview ? preview : ''}<br/><br/>
                 {'  '}// Click to load comments{'\n'}
                 {'  '}<a onClick={this.toggleComments}>for numComments in range(0, {this.props.num_comments}):</a><br/>
               {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
@@ -112,8 +126,9 @@ module.exports = React.createClass({
               {'  '}int finalScore = score > 0 ? score : {this.props.score};<br/>
               {'  '}String finalSubreddit = subreddit != null ? subreddit : "{linkNode}";<br/>
               {'  '}String author = "{this.props.author}";<br/>
-              {'  '}String link = <a href={this.props.url}>"{this.props.url}"</a>;<br/>
+              {'  '}String link = <a href={this.props.url} target="_blank">"{this.props.url}"</a>;<br/>
               {'  '}String fullTitle = "{this.props.title}";<br/><br/>
+              {'  '}String preview = <a onClick={this.togglePreview}>"toggle"</a>;<br/>{this.state.showPreview ? preview : ''}<br/><br/>
               {'  '}// Click to load comments{'\n'}
               {'  '}<a onClick={this.toggleComments}>for (int numComments = 0; numComments {'<'}= {this.props.num_comments}; numComments++){' {'}</a><br/>
             {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>

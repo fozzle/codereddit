@@ -30,6 +30,7 @@ let Comment = React.createClass({
       for (let i = 0; i <= num_splits; i++) {
         new_text = new_text + this.props.space + text.substring(i * 80, (i+1)*80).trim() + "\n";
       }
+
       return new_text + this.props.space + commentChars[1];
     },
     render: function() {
