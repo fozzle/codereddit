@@ -75,7 +75,7 @@ module.exports = React.createClass({
                 {'  '}$author = "{this.props.author}";<br/>
                 {'  '}$link = <a href={this.props.url} target="_blank">"{this.props.url}"</a>;<br/>
                 {'  '}$fullTitle = "{this.props.title}";<br/><br/>
-                {'  '}$preview = <a onClick={this.togglePreview}>"toggle"</a>;<br/>{this.state.showPreview ? preview : ''}<br/>
+                {'  '}$preview = <a onClick={this.togglePreview}>"toggle"</a>;{this.state.showPreview ? <br/> : ''}{this.state.showPreview ? preview : ''}<br/>
                 {'  '}<br/>
                 {'  '}// Click to load comments{'\n'}
                 {'  '}<a onClick={this.toggleComments}>for ($numComments = 0; $numComments {'<'}= {this.props.num_comments}; $numComments++){' {'}</a><br/>
@@ -93,7 +93,7 @@ module.exports = React.createClass({
                 {'  '}var author = "{this.props.author}";<br/>
                 {'  '}var link = <a href={this.props.url}>"{this.props.url}"</a>;<br/>
                 {'  '}var fullTitle = "{this.props.title}";<br/><br/>
-                {'  '}var preview = <a onClick={this.togglePreview}>"toggle"</a>;<br/>{this.state.showPreview ? preview : ''}<br/><br/>
+                {'  '}var preview = <a onClick={this.togglePreview}>"toggle"</a>;{this.state.showPreview ? <br/> : ''}{this.state.showPreview ? preview : ''}<br/><br/>
                 {'  '}// Click to load comments{'\n'}
                 {'  '}<a onClick={this.toggleComments}>for (var numComments = 0; numComments {'<'}= {this.props.num_comments}; numComments++){' {'}</a><br/>
               {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
@@ -110,7 +110,7 @@ module.exports = React.createClass({
                 {'  '}author = "{this.props.author}"<br/>
                 {'  '}link = <a href={this.props.url}>"{this.props.url}"</a><br/>
                 {'  '}fullTitle = "{this.props.title}"<br/><br/>
-                {'  '}var preview = <a onClick={this.togglePreview}>"toggle"</a>;<br/>{this.state.showPreview ? preview : ''}<br/><br/>
+                {'  '}preview = <a onClick={this.togglePreview}>"toggle"</a>;{this.state.showPreview ? <br/> : ''}{this.state.showPreview ? preview : ''}<br/><br/>
                 {'  '}// Click to load comments{'\n'}
                 {'  '}<a onClick={this.toggleComments}>for numComments in range(0, {this.props.num_comments}):</a><br/>
               {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
@@ -128,7 +128,7 @@ module.exports = React.createClass({
               {'  '}String author = "{this.props.author}";<br/>
               {'  '}String link = <a href={this.props.url} target="_blank">"{this.props.url}"</a>;<br/>
               {'  '}String fullTitle = "{this.props.title}";<br/><br/>
-              {'  '}String preview = <a onClick={this.togglePreview}>"toggle"</a>;<br/>{this.state.showPreview ? preview : ''}<br/><br/>
+              {'  '}String preview = <a onClick={this.togglePreview}>"toggle"</a>;{this.state.showPreview ? <br/> : ''}{this.state.showPreview ? preview : ''}<br/><br/>
               {'  '}// Click to load comments{'\n'}
               {'  '}<a onClick={this.toggleComments}>for (int numComments = 0; numComments {'<'}= {this.props.num_comments}; numComments++){' {'}</a><br/>
             {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>

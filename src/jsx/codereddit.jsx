@@ -103,7 +103,7 @@ module.exports = React.createClass({
                 <code className={this.state.lang}>
                   <Link to={`about`}>require('readme.php');</Link><br/>
                   <Link to={`/?lang=${this.state.lang}`}>$location</Link> = "{this.state.subreddit}";<br/>
-                  $locationsArray = [{subredditNodes}];<br/>
+                  $locations = [{subredditNodes}];<br/>
                   $language = <a onClick={this.handleLanguageChange}>"{this.state.lang}"</a>;<br/>
                   <br/>
                   {this.state.loading ? loadingNode : postNodes}
@@ -116,6 +116,7 @@ module.exports = React.createClass({
                 <code className={this.state.lang}>
                   <Link to={`about`}>import Readme from 'readme';</Link><br/>
                   <Link to={`/?lang=${this.state.lang}`}>var location</Link> = "{this.state.subreddit}";<br/>
+                  var locations = [{subredditNodes}];<br/>
                   var language = <a onClick={this.handleLanguageChange}>"{this.state.lang}"</a>;<br/>
                   <br/>
                   {this.state.loading ? loadingNode : postNodes}
@@ -128,6 +129,7 @@ module.exports = React.createClass({
                 <code className={this.state.lang}>
                   <Link to={`about`}>from readme import *</Link><br/>
                   <Link to={`/?lang=${this.state.lang}`}>location</Link> = "{this.state.subreddit}"<br/>
+                  locations = [{subredditNodes}];<br/>
                   language = <a onClick={this.handleLanguageChange}>"{this.state.lang}"</a>;<br/>
                   <br/>
                   {this.state.loading ? loadingNode : postNodes}
@@ -140,6 +142,7 @@ module.exports = React.createClass({
                 <code className={this.state.lang}>
                   <Link to={`about`}>import com.codereddit.Readme;</Link><br/>
                   <Link to={`/?lang=${this.state.lang}`}>String location</Link> = "{this.state.subreddit}";<br/>
+                  String[] locations = {'{'}{subredditNodes}{'}'};<br/>
                   String language = <a onClick={this.handleLanguageChange}>"{this.state.lang}"</a>;<br/>
                   <br/>
                   {this.state.loading ? loadingNode : postNodes}
