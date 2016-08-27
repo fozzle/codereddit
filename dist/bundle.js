@@ -20663,6 +20663,12 @@
 	            "\";",
 	            _react2["default"].createElement("br", null),
 	            "$locations = [",
+	            _react2["default"].createElement(
+	              _reactRouter.Link,
+	              { to: "?lang=" + this.state.lang },
+	              "\"frontpage\""
+	            ),
+	            ", ",
 	            subredditNodes,
 	            "];",
 	            _react2["default"].createElement("br", null),
@@ -22827,16 +22833,17 @@
 	    };
 	  },
 	  componentDidUpdate: function componentDidUpdate(prevProps, prevState) {
-	    this.highlightCode();
+	    // this.highlightCode();
 	  },
-	  highlightCode: function highlightCode() {
-	    var domNode = this.getDOMNode();
-	    var comments = domNode.querySelectorAll('.comment');
+	  // highlightCode: function() {
+	  //   let domNode = this.getDOMNode();
+	  //   let comments = domNode.querySelectorAll('.comment');
 
-	    for (var i = 0; i < comments.length; i++) {
-	      _highlightJs2['default'].highlightBlock(comments[i]);
-	    }
-	  },
+	  //   for (let i = 0; i < comments.length; i++) {
+	  //     Highlight.highlightBlock(comments[i]);
+	  //   }
+
+	  // },
 	  toggleComments: function toggleComments() {
 	    var _this = this;
 
@@ -22872,9 +22879,9 @@
 
 	    var commentNodes = this.state.comments.map(function (childComment) {
 	      var children = childComment.data.replies ? childComment.data.replies.data.children : [];
-	      return _react2['default'].createElement(_comment2['default'], { lang: _this2.props.lang, key: childComment.data.id, children: children, author: childComment.data.author, score: childComment.data.score, text: childComment.data.body, space: "  " });
+	      return _react2['default'].createElement(_comment2['default'], { lang: _this2.props.lang, key: childComment.data.id, children: children, author: childComment.data.author, score: childComment.data.score, text: childComment.data.body, space: "    " });
 	    });
-	    var loadingNode = _react2['default'].createElement(_comment2['default'], { lang: this.props.lang, author: 'CodeReddit-system', score: 1337, children: [], text: 'Loading comments...', space: "  " });
+	    var loadingNode = _react2['default'].createElement(_comment2['default'], { lang: this.props.lang, author: 'CodeReddit-system', score: 1337, children: [], text: 'Loading comments...', space: "    " });
 	    var linkNode = _react2['default'].createElement(
 	      _reactRouter.Link,
 	      { to: '/' + this.props.subreddit + '?lang=' + this.props.lang },
@@ -22897,9 +22904,10 @@
 	          ' {',
 	          _react2['default'].createElement('br', null),
 	          '  ',
-	          '$author = "',
-	          this.props.author,
+	          '$fullTitle = "',
+	          this.props.title,
 	          '";',
+	          _react2['default'].createElement('br', null),
 	          _react2['default'].createElement('br', null),
 	          '  ',
 	          '$link = ',
@@ -22913,12 +22921,6 @@
 	          ';',
 	          _react2['default'].createElement('br', null),
 	          '  ',
-	          '$fullTitle = "',
-	          this.props.title,
-	          '";',
-	          _react2['default'].createElement('br', null),
-	          _react2['default'].createElement('br', null),
-	          '  ',
 	          '$preview = ',
 	          _react2['default'].createElement(
 	            'a',
@@ -22928,6 +22930,11 @@
 	          ';',
 	          this.state.showPreview ? _react2['default'].createElement('br', null) : '',
 	          this.state.showPreview ? preview : '',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          '$author = "',
+	          this.props.author,
+	          '";',
 	          _react2['default'].createElement('br', null),
 	          '  ',
 	          _react2['default'].createElement('br', null),
@@ -22969,6 +22976,12 @@
 	          ' {',
 	          _react2['default'].createElement('br', null),
 	          '  ',
+	          'var fullTitle = "',
+	          this.props.title,
+	          '";',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          '  ',
 	          'var author = "',
 	          this.props.author,
 	          '";',
@@ -22983,12 +22996,6 @@
 	            '"'
 	          ),
 	          ';',
-	          _react2['default'].createElement('br', null),
-	          '  ',
-	          'var fullTitle = "',
-	          this.props.title,
-	          '";',
-	          _react2['default'].createElement('br', null),
 	          _react2['default'].createElement('br', null),
 	          '  ',
 	          'var preview = ',
@@ -23039,6 +23046,12 @@
 	          '"):',
 	          _react2['default'].createElement('br', null),
 	          '  ',
+	          'fullTitle = "',
+	          this.props.title,
+	          '"',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          '  ',
 	          'author = "',
 	          this.props.author,
 	          '"',
@@ -23054,12 +23067,6 @@
 	          ),
 	          _react2['default'].createElement('br', null),
 	          '  ',
-	          'fullTitle = "',
-	          this.props.title,
-	          '"',
-	          _react2['default'].createElement('br', null),
-	          _react2['default'].createElement('br', null),
-	          '  ',
 	          'preview = ',
 	          _react2['default'].createElement(
 	            'a',
@@ -23072,7 +23079,7 @@
 	          _react2['default'].createElement('br', null),
 	          _react2['default'].createElement('br', null),
 	          '  ',
-	          '// Click to load comments',
+	          '# Click to load comments',
 	          '\n',
 	          '  ',
 	          _react2['default'].createElement(
@@ -23110,6 +23117,12 @@
 	          '";',
 	          _react2['default'].createElement('br', null),
 	          '  ',
+	          'String fullTitle = "',
+	          this.props.title,
+	          '";',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          '  ',
 	          'String author = "',
 	          this.props.author,
 	          '";',
@@ -23124,12 +23137,6 @@
 	            '"'
 	          ),
 	          ';',
-	          _react2['default'].createElement('br', null),
-	          '  ',
-	          'String fullTitle = "',
-	          this.props.title,
-	          '";',
-	          _react2['default'].createElement('br', null),
 	          _react2['default'].createElement('br', null),
 	          '  ',
 	          'String preview = ',
@@ -27639,6 +27646,18 @@
 
 	var Comment = React.createClass({
 	  displayName: 'CodeReddit Comment',
+	  getInitialState: function getInitialState() {
+	    return {
+	      showComments: true
+	    };
+	  },
+	  toggleComments: function toggleComments() {
+	    if (this.state.showComments == true) {
+	      this.setState({ showComments: false });
+	    } else {
+	      this.setState({ showComments: true });
+	    }
+	  },
 	  formatCommentText: function formatCommentText() {
 	    // If it's a self text we're going to output a large
 	    // comment block.
@@ -27649,8 +27668,8 @@
 	    var commentChars = [];
 	    switch (this.props.lang) {
 	      case 'python':
-	        commentChars[0] = "'''";
-	        commentChars[1] = "'''";
+	        commentChars[0] = '"""';
+	        commentChars[1] = '"""';
 	        break;
 	      case 'php':
 	      case 'javascript':
@@ -27676,65 +27695,191 @@
 	      return React.createElement(Comment, { key: childComment.data.id, children: children, author: childComment.data.author, lang: _this.props.lang, score: childComment.data.score, text: childComment.data.body, space: _this.props.space + "  " });
 	    });
 
+	    var commentChars = [];
+	    var commentClass = "hljs-comment";
+	    switch (this.props.lang) {
+	      case 'python':
+	        commentChars[0] = '"""';
+	        commentChars[1] = '"""';
+	        commentClass = "hljs-string";
+	        break;
+	      case 'php':
+	      case 'javascript':
+	      case 'java':
+	        commentChars[0] = "/*";
+	        commentChars[1] = "*/";
+	        var commentClass = "hljs-comment";
+	    }
+
+	    var hiddenNode = React.createElement(
+	      'div',
+	      { className: commentClass },
+	      this.props.space,
+	      commentChars[0],
+	      ' Comments Hidden ',
+	      commentChars[1]
+	    );
+
 	    switch (this.props.lang) {
 	      case 'php':
 	        return React.createElement(
 	          'pre',
 	          { className: 'comment {this.props.lang}' },
 	          this.props.space,
-	          '$score = ',
-	          this.props.score,
-	          '; $author = "',
-	          this.props.author,
-	          '";',
+	          React.createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-variable' },
+	              '$score'
+	            ),
+	            ' = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-number' },
+	              this.props.score
+	            ),
+	            '; ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-variable' },
+	              '$author ='
+	            ),
+	            ' ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-string' },
+	              this.props.author,
+	              '"'
+	            ),
+	            ';'
+	          ),
 	          React.createElement('br', null),
-	          this.formatCommentText(),
-	          commentNodes
+	          React.createElement(
+	            'span',
+	            { className: commentClass },
+	            this.formatCommentText()
+	          ),
+	          this.state.showComments ? commentNodes : hiddenNode
 	        );
 	      case 'javascript':
 	        return React.createElement(
 	          'pre',
 	          { className: 'comment {this.props.lang}' },
 	          this.props.space,
-	          'var score = ',
-	          this.props.score,
-	          ', author = "',
-	          this.props.author,
-	          '";',
+	          React.createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-keyword' },
+	              'var'
+	            ),
+	            ' score = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-number' },
+	              this.props.score
+	            ),
+	            ', author = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-string' },
+	              '"',
+	              this.props.author,
+	              '"'
+	            ),
+	            ';'
+	          ),
 	          React.createElement('br', null),
-	          this.formatCommentText(),
-	          commentNodes
+	          React.createElement(
+	            'span',
+	            { className: commentClass },
+	            this.formatCommentText()
+	          ),
+	          this.state.showComments ? commentNodes : hiddenNode
 	        );
 	      case 'python':
 	        return React.createElement(
 	          'pre',
 	          { className: 'comment {this.props.lang}' },
 	          this.props.space,
-	          'score = ',
-	          this.props.score,
-	          ', author = "',
-	          this.props.author,
-	          '"',
+	          React.createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            'score = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-number' },
+	              this.props.score
+	            ),
+	            ', author = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-string' },
+	              '"',
+	              this.props.author,
+	              '"'
+	            ),
+	            ';'
+	          ),
 	          React.createElement('br', null),
-	          this.formatCommentText(),
-	          commentNodes
+	          React.createElement(
+	            'span',
+	            { className: commentClass },
+	            this.formatCommentText()
+	          ),
+	          this.state.showComments ? commentNodes : hiddenNode
 	        );
 	      case 'java':
 	        return React.createElement(
 	          'pre',
 	          { className: 'comment {this.props.lang}' },
 	          this.props.space,
-	          'int score = ',
-	          this.props.score,
-	          ';',
+	          React.createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-built_in' },
+	              'int'
+	            ),
+	            ' score = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-number' },
+	              this.props.score
+	            ),
+	            ';'
+	          ),
 	          React.createElement('br', null),
 	          this.props.space,
-	          'String author = "',
-	          this.props.author,
-	          '";',
+	          React.createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-built_in' },
+	              'String'
+	            ),
+	            ' author = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-string' },
+	              '"',
+	              this.props.author,
+	              '"'
+	            ),
+	            ';'
+	          ),
 	          React.createElement('br', null),
-	          this.formatCommentText(),
-	          commentNodes
+	          React.createElement(
+	            'span',
+	            { className: commentClass },
+	            this.formatCommentText()
+	          ),
+	          this.state.showComments ? commentNodes : hiddenNode
 	        );
 	    }
 	  }
@@ -42450,7 +42595,7 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	exports = module.exports = __webpack_require__(370)();
-	exports.push([module.id, "pre {\n    margin: 0;\n    padding: 0;\n}\n\nbody {\n  margin: 0;\n}\n\na {\n    text-decoration: none;\n    color: inherit;\n    cursor: pointer;\n}\n\na:hover {\n    text-decoration: underline;\n}\n", ""]);
+	exports.push([module.id, "pre {\n    margin: 0;\n    padding: 0;\n}\n\nbody {\n  margin: 0;\n}\n\na {\n    text-decoration: none;\n    color: inherit;\n    cursor: pointer;\n}\n\na:hover {\n    text-decoration: underline;\n}\n\npre {\n    white-space: pre-wrap;       /* Since CSS 2.1 */\n    white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */\n    white-space: -pre-wrap;      /* Opera 4-6 */\n    white-space: -o-pre-wrap;    /* Opera 7 */\n    word-wrap: break-word;       /* Internet Explorer 5.5+ */\n}", ""]);
 
 /***/ },
 /* 374 */

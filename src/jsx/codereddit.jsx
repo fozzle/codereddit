@@ -103,7 +103,7 @@ module.exports = React.createClass({
                 <code className={this.state.lang}>
                   <Link to={`about`}>require('readme.php');</Link><br/>
                   <Link to={`/?lang=${this.state.lang}`}>$location</Link> = "{this.state.subreddit}";<br/>
-                  $locations = [{subredditNodes}];<br/>
+                  $locations = [<Link to={`?lang=${this.state.lang}` }>"frontpage"</Link>, {subredditNodes}];<br/>
                   $language = <a onClick={this.handleLanguageChange}>"{this.state.lang}"</a>;<br/>
                   <br/>
                   {this.state.loading ? loadingNode : postNodes}
