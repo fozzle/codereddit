@@ -56,7 +56,7 @@
 
 	var _codereddit2 = _interopRequireDefault(_codereddit);
 
-	var _about = __webpack_require__(368);
+	var _about = __webpack_require__(374);
 
 	var _about2 = _interopRequireDefault(_about);
 
@@ -241,14 +241,83 @@
 /***/ function(module, exports) {
 
 	// shim for using process in browser
-
 	var process = module.exports = {};
+
+	// cached from whatever global is present so that test runners that stub it
+	// don't break things.  But we need to wrap it in a try catch in case it is
+	// wrapped in strict mode code which doesn't define any globals.  It's inside a
+	// function because try/catches deoptimize in certain engines.
+
+	var cachedSetTimeout;
+	var cachedClearTimeout;
+
+	(function () {
+	    try {
+	        cachedSetTimeout = setTimeout;
+	    } catch (e) {
+	        cachedSetTimeout = function () {
+	            throw new Error('setTimeout is not defined');
+	        }
+	    }
+	    try {
+	        cachedClearTimeout = clearTimeout;
+	    } catch (e) {
+	        cachedClearTimeout = function () {
+	            throw new Error('clearTimeout is not defined');
+	        }
+	    }
+	} ())
+	function runTimeout(fun) {
+	    if (cachedSetTimeout === setTimeout) {
+	        //normal enviroments in sane situations
+	        return setTimeout(fun, 0);
+	    }
+	    try {
+	        // when when somebody has screwed with setTimeout but no I.E. maddness
+	        return cachedSetTimeout(fun, 0);
+	    } catch(e){
+	        try {
+	            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+	            return cachedSetTimeout.call(null, fun, 0);
+	        } catch(e){
+	            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+	            return cachedSetTimeout.call(this, fun, 0);
+	        }
+	    }
+
+
+	}
+	function runClearTimeout(marker) {
+	    if (cachedClearTimeout === clearTimeout) {
+	        //normal enviroments in sane situations
+	        return clearTimeout(marker);
+	    }
+	    try {
+	        // when when somebody has screwed with setTimeout but no I.E. maddness
+	        return cachedClearTimeout(marker);
+	    } catch (e){
+	        try {
+	            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+	            return cachedClearTimeout.call(null, marker);
+	        } catch (e){
+	            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+	            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+	            return cachedClearTimeout.call(this, marker);
+	        }
+	    }
+
+
+
+	}
 	var queue = [];
 	var draining = false;
 	var currentQueue;
 	var queueIndex = -1;
 
 	function cleanUpNextTick() {
+	    if (!draining || !currentQueue) {
+	        return;
+	    }
 	    draining = false;
 	    if (currentQueue.length) {
 	        queue = currentQueue.concat(queue);
@@ -264,7 +333,7 @@
 	    if (draining) {
 	        return;
 	    }
-	    var timeout = setTimeout(cleanUpNextTick);
+	    var timeout = runTimeout(cleanUpNextTick);
 	    draining = true;
 
 	    var len = queue.length;
@@ -281,7 +350,7 @@
 	    }
 	    currentQueue = null;
 	    draining = false;
-	    clearTimeout(timeout);
+	    runClearTimeout(timeout);
 	}
 
 	process.nextTick = function (fun) {
@@ -293,7 +362,7 @@
 	    }
 	    queue.push(new Item(fun, args));
 	    if (queue.length === 1 && !draining) {
-	        setTimeout(drainQueue, 0);
+	        runTimeout(drainQueue);
 	    }
 	};
 
@@ -20472,14 +20541,14 @@
 
 	var _post2 = _interopRequireDefault(_post);
 
-	var _highlightJs = __webpack_require__(225);
+	var _highlightJs = __webpack_require__(229);
 
 	var _highlightJs2 = _interopRequireDefault(_highlightJs);
 
 	var _reactRouter = __webpack_require__(178);
 
-	__webpack_require__(369);
-	__webpack_require__(366);
+	__webpack_require__(368);
+	__webpack_require__(372);
 
 	var LANGS = ['php', 'javascript', 'python', 'java'];
 
@@ -20490,6 +20559,7 @@
 	      data: [],
 	      loading: true,
 	      subreddit: this.props.params.subreddit || 'frontpage',
+	      subreddits: [],
 	      lang: this.props.location.query.lang || LANGS[0]
 	    };
 	  },
@@ -20531,16 +20601,41 @@
 	    }).bind(this))["catch"]((function (response) {
 	      this.setState({ error: "error", loading: false });
 	    }).bind(this));
+	    this.showSubreddits();
 	  },
 	  handleLanguageChange: function handleLanguageChange() {
 	    var langIndex = (LANGS.indexOf(this.state.lang) + 1) % LANGS.length;
 	    this.props.history.pushState(null, '/', { lang: LANGS[langIndex] });
 	  },
-	  render: function render() {
+	  showSubreddits: function showSubreddits() {
 	    var _this = this;
 
+	    _axios2["default"].get('https://www.reddit.com/subreddits.json').then(function (response) {
+	      var results = response.data.data.children;
+	      var subreddits = [];
+	      for (var i = 0; i < results.length; i++) {
+	        var subredditName = results[i].data.display_name;
+	        subreddits.push(subredditName);
+	      }
+	      _this.setState({ subreddits: subreddits });
+	    });
+	  },
+	  render: function render() {
+	    var _this2 = this;
+
 	    var postNodes = this.state.data.map(function (post, i) {
-	      return _react2["default"].createElement(_post2["default"], _extends({}, post.data, { key: i, subredditHandler: _this.switchSubreddit, lang: _this.state.lang }));
+	      return _react2["default"].createElement(_post2["default"], _extends({}, post.data, { key: i, subredditHandler: _this2.switchSubreddit, lang: _this2.state.lang }));
+	    });
+
+	    var subredditNodes = this.state.subreddits.map(function (subreddit, i) {
+	      return _react2["default"].createElement(
+	        _reactRouter.Link,
+	        { key: i, to: "/" + subreddit + "?lang=" + _this2.state.lang },
+	        "\"",
+	        subreddit,
+	        "\"",
+	        i == _this2.state.subreddits.length - 1 ? '' : ', '
+	      );
 	    });
 
 	    var loadingNode = "function loadingRedditPosts() {\n  // Please be patient!\n}";
@@ -20566,6 +20661,16 @@
 	            " = \"",
 	            this.state.subreddit,
 	            "\";",
+	            _react2["default"].createElement("br", null),
+	            "$locations = [",
+	            _react2["default"].createElement(
+	              _reactRouter.Link,
+	              { to: "?lang=" + this.state.lang },
+	              "\"frontpage\""
+	            ),
+	            ", ",
+	            subredditNodes,
+	            "];",
 	            _react2["default"].createElement("br", null),
 	            "$language = ",
 	            _react2["default"].createElement(
@@ -20603,6 +20708,10 @@
 	            this.state.subreddit,
 	            "\";",
 	            _react2["default"].createElement("br", null),
+	            "var locations = [",
+	            subredditNodes,
+	            "];",
+	            _react2["default"].createElement("br", null),
 	            "var language = ",
 	            _react2["default"].createElement(
 	              "a",
@@ -20639,6 +20748,10 @@
 	            this.state.subreddit,
 	            "\"",
 	            _react2["default"].createElement("br", null),
+	            "locations = [",
+	            subredditNodes,
+	            "];",
+	            _react2["default"].createElement("br", null),
 	            "language = ",
 	            _react2["default"].createElement(
 	              "a",
@@ -20674,6 +20787,12 @@
 	            " = \"",
 	            this.state.subreddit,
 	            "\";",
+	            _react2["default"].createElement("br", null),
+	            "String[] locations = ",
+	            '{',
+	            subredditNodes,
+	            '}',
+	            ";",
 	            _react2["default"].createElement("br", null),
 	            "String language = ",
 	            _react2["default"].createElement(
@@ -22693,11 +22812,15 @@
 
 	var _reactRouter = __webpack_require__(178);
 
-	var _comment = __webpack_require__(224);
+	var _comment = __webpack_require__(227);
 
 	var _comment2 = _interopRequireDefault(_comment);
 
-	var _highlightJs = __webpack_require__(225);
+	var _preview = __webpack_require__(228);
+
+	var _preview2 = _interopRequireDefault(_preview);
+
+	var _highlightJs = __webpack_require__(229);
 
 	var _highlightJs2 = _interopRequireDefault(_highlightJs);
 
@@ -22705,21 +22828,22 @@
 	  displayName: 'CodeReddit Post',
 	  getInitialState: function getInitialState() {
 	    return {
-	      comments: []
+	      comments: [],
+	      showPreview: false
 	    };
 	  },
 	  componentDidUpdate: function componentDidUpdate(prevProps, prevState) {
-	    this.highlightCode();
+	    // this.highlightCode();
 	  },
-	  highlightCode: function highlightCode() {
-	    var domNode = this.getDOMNode();
-	    var nodes = domNode.querySelectorAll('.comment');
-	    if (nodes.length > 0) {
-	      for (var i = 0; i < nodes.length; i = i + 1) {
-	        _highlightJs2['default'].highlightBlock(nodes[i]);
-	      }
-	    }
-	  },
+	  // highlightCode: function() {
+	  //   let domNode = this.getDOMNode();
+	  //   let comments = domNode.querySelectorAll('.comment');
+
+	  //   for (let i = 0; i < comments.length; i++) {
+	  //     Highlight.highlightBlock(comments[i]);
+	  //   }
+
+	  // },
 	  toggleComments: function toggleComments() {
 	    var _this = this;
 
@@ -22736,6 +22860,13 @@
 	      });
 	    }
 	  },
+	  togglePreview: function togglePreview() {
+	    if (this.state.showPreview == true) {
+	      this.setState({ showPreview: false });
+	    } else {
+	      this.setState({ showPreview: true });
+	    }
+	  },
 	  shortenedTitle: function shortenedTitle() {
 	    var titleTokens = this.props.title.toLowerCase().substring(0, 20).replace(/[^A-Za-z0-9\s\s+]/gi, '').split(' ');
 	    var title = titleTokens.reduce(function (prev, curr) {
@@ -22748,14 +22879,15 @@
 
 	    var commentNodes = this.state.comments.map(function (childComment) {
 	      var children = childComment.data.replies ? childComment.data.replies.data.children : [];
-	      return _react2['default'].createElement(_comment2['default'], { lang: _this2.props.lang, key: childComment.data.id, children: children, author: childComment.data.author, score: childComment.data.score, text: childComment.data.body, space: "  " });
+	      return _react2['default'].createElement(_comment2['default'], { lang: _this2.props.lang, key: childComment.data.id, children: children, author: childComment.data.author, score: childComment.data.score, text: childComment.data.body, space: "    " });
 	    });
-	    var loadingNode = _react2['default'].createElement(_comment2['default'], { lang: this.props.lang, author: 'CodeReddit-system', score: 1337, children: [], text: 'Loading comments...', space: "  " });
+	    var loadingNode = _react2['default'].createElement(_comment2['default'], { lang: this.props.lang, author: 'CodeReddit-system', score: 1337, children: [], text: 'Loading comments...', space: "    " });
 	    var linkNode = _react2['default'].createElement(
 	      _reactRouter.Link,
 	      { to: '/' + this.props.subreddit + '?lang=' + this.props.lang },
 	      this.props.subreddit
 	    );
+	    var preview = _react2['default'].createElement(_preview2['default'], { url: this.props.url, selfText: this.props.selftext, lang: this.props.lang, space: "  " });
 
 	    switch (this.props.lang) {
 	      case 'php':
@@ -22772,15 +22904,16 @@
 	          ' {',
 	          _react2['default'].createElement('br', null),
 	          '  ',
-	          '$author = "',
-	          this.props.author,
+	          '$fullTitle = "',
+	          this.props.title,
 	          '";',
+	          _react2['default'].createElement('br', null),
 	          _react2['default'].createElement('br', null),
 	          '  ',
 	          '$link = ',
 	          _react2['default'].createElement(
 	            'a',
-	            { href: this.props.url },
+	            { href: this.props.url, target: '_blank' },
 	            '"',
 	            this.props.url,
 	            '"'
@@ -22788,10 +22921,22 @@
 	          ';',
 	          _react2['default'].createElement('br', null),
 	          '  ',
-	          '$fullTitle = "',
-	          this.props.title,
+	          '$preview = ',
+	          _react2['default'].createElement(
+	            'a',
+	            { onClick: this.togglePreview },
+	            '"toggle"'
+	          ),
+	          ';',
+	          this.state.showPreview ? _react2['default'].createElement('br', null) : '',
+	          this.state.showPreview ? preview : '',
+	          _react2['default'].createElement('br', null),
+	          '  ',
+	          '$author = "',
+	          this.props.author,
 	          '";',
 	          _react2['default'].createElement('br', null),
+	          '  ',
 	          _react2['default'].createElement('br', null),
 	          '  ',
 	          '// Click to load comments',
@@ -22831,6 +22976,12 @@
 	          ' {',
 	          _react2['default'].createElement('br', null),
 	          '  ',
+	          'var fullTitle = "',
+	          this.props.title,
+	          '";',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          '  ',
 	          'var author = "',
 	          this.props.author,
 	          '";',
@@ -22847,9 +22998,15 @@
 	          ';',
 	          _react2['default'].createElement('br', null),
 	          '  ',
-	          'var fullTitle = "',
-	          this.props.title,
-	          '";',
+	          'var preview = ',
+	          _react2['default'].createElement(
+	            'a',
+	            { onClick: this.togglePreview },
+	            '"toggle"'
+	          ),
+	          ';',
+	          this.state.showPreview ? _react2['default'].createElement('br', null) : '',
+	          this.state.showPreview ? preview : '',
 	          _react2['default'].createElement('br', null),
 	          _react2['default'].createElement('br', null),
 	          '  ',
@@ -22889,6 +23046,12 @@
 	          '"):',
 	          _react2['default'].createElement('br', null),
 	          '  ',
+	          'fullTitle = "',
+	          this.props.title,
+	          '"',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          '  ',
 	          'author = "',
 	          this.props.author,
 	          '"',
@@ -22904,13 +23067,19 @@
 	          ),
 	          _react2['default'].createElement('br', null),
 	          '  ',
-	          'fullTitle = "',
-	          this.props.title,
-	          '"',
+	          'preview = ',
+	          _react2['default'].createElement(
+	            'a',
+	            { onClick: this.togglePreview },
+	            '"toggle"'
+	          ),
+	          ';',
+	          this.state.showPreview ? _react2['default'].createElement('br', null) : '',
+	          this.state.showPreview ? preview : '',
 	          _react2['default'].createElement('br', null),
 	          _react2['default'].createElement('br', null),
 	          '  ',
-	          '// Click to load comments',
+	          '# Click to load comments',
 	          '\n',
 	          '  ',
 	          _react2['default'].createElement(
@@ -22948,6 +23117,12 @@
 	          '";',
 	          _react2['default'].createElement('br', null),
 	          '  ',
+	          'String fullTitle = "',
+	          this.props.title,
+	          '";',
+	          _react2['default'].createElement('br', null),
+	          _react2['default'].createElement('br', null),
+	          '  ',
 	          'String author = "',
 	          this.props.author,
 	          '";',
@@ -22956,7 +23131,7 @@
 	          'String link = ',
 	          _react2['default'].createElement(
 	            'a',
-	            { href: this.props.url },
+	            { href: this.props.url, target: '_blank' },
 	            '"',
 	            this.props.url,
 	            '"'
@@ -22964,9 +23139,15 @@
 	          ';',
 	          _react2['default'].createElement('br', null),
 	          '  ',
-	          'String fullTitle = "',
-	          this.props.title,
-	          '";',
+	          'String preview = ',
+	          _react2['default'].createElement(
+	            'a',
+	            { onClick: this.togglePreview },
+	            '"toggle"'
+	          ),
+	          ';',
+	          this.state.showPreview ? _react2['default'].createElement('br', null) : '',
+	          this.state.showPreview ? preview : '',
 	          _react2['default'].createElement('br', null),
 	          _react2['default'].createElement('br', null),
 	          '  ',
@@ -23014,13 +23195,13 @@
 
 	exports.Router = _Router3['default'];
 
-	var _Link2 = __webpack_require__(212);
+	var _Link2 = __webpack_require__(215);
 
 	var _Link3 = _interopRequireDefault(_Link2);
 
 	exports.Link = _Link3['default'];
 
-	var _IndexLink2 = __webpack_require__(213);
+	var _IndexLink2 = __webpack_require__(216);
 
 	var _IndexLink3 = _interopRequireDefault(_IndexLink2);
 
@@ -23028,25 +23209,25 @@
 
 	/* components (configuration) */
 
-	var _IndexRedirect2 = __webpack_require__(214);
+	var _IndexRedirect2 = __webpack_require__(217);
 
 	var _IndexRedirect3 = _interopRequireDefault(_IndexRedirect2);
 
 	exports.IndexRedirect = _IndexRedirect3['default'];
 
-	var _IndexRoute2 = __webpack_require__(216);
+	var _IndexRoute2 = __webpack_require__(219);
 
 	var _IndexRoute3 = _interopRequireDefault(_IndexRoute2);
 
 	exports.IndexRoute = _IndexRoute3['default'];
 
-	var _Redirect2 = __webpack_require__(215);
+	var _Redirect2 = __webpack_require__(218);
 
 	var _Redirect3 = _interopRequireDefault(_Redirect2);
 
 	exports.Redirect = _Redirect3['default'];
 
-	var _Route2 = __webpack_require__(217);
+	var _Route2 = __webpack_require__(220);
 
 	var _Route3 = _interopRequireDefault(_Route2);
 
@@ -23054,19 +23235,19 @@
 
 	/* mixins */
 
-	var _History2 = __webpack_require__(218);
+	var _History2 = __webpack_require__(221);
 
 	var _History3 = _interopRequireDefault(_History2);
 
 	exports.History = _History3['default'];
 
-	var _Lifecycle2 = __webpack_require__(219);
+	var _Lifecycle2 = __webpack_require__(222);
 
 	var _Lifecycle3 = _interopRequireDefault(_Lifecycle2);
 
 	exports.Lifecycle = _Lifecycle3['default'];
 
-	var _RouteContext2 = __webpack_require__(220);
+	var _RouteContext2 = __webpack_require__(223);
 
 	var _RouteContext3 = _interopRequireDefault(_RouteContext2);
 
@@ -23074,29 +23255,29 @@
 
 	/* utils */
 
-	var _useRoutes2 = __webpack_require__(199);
+	var _useRoutes2 = __webpack_require__(204);
 
 	var _useRoutes3 = _interopRequireDefault(_useRoutes2);
 
 	exports.useRoutes = _useRoutes3['default'];
 
-	var _RouteUtils = __webpack_require__(195);
+	var _RouteUtils = __webpack_require__(199);
 
 	exports.createRoutes = _RouteUtils.createRoutes;
 
-	var _RoutingContext2 = __webpack_require__(196);
+	var _RoutingContext2 = __webpack_require__(200);
 
 	var _RoutingContext3 = _interopRequireDefault(_RoutingContext2);
 
 	exports.RoutingContext = _RoutingContext3['default'];
 
-	var _PropTypes2 = __webpack_require__(211);
+	var _PropTypes2 = __webpack_require__(214);
 
 	var _PropTypes3 = _interopRequireDefault(_PropTypes2);
 
 	exports.PropTypes = _PropTypes3['default'];
 
-	var _match2 = __webpack_require__(221);
+	var _match2 = __webpack_require__(224);
 
 	var _match3 = _interopRequireDefault(_match2);
 
@@ -23110,41 +23291,43 @@
 /* 179 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
-	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+	var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+	function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _react = __webpack_require__(1);
-
-	var _react2 = _interopRequireDefault(_react);
-
 	var _warning = __webpack_require__(180);
 
 	var _warning2 = _interopRequireDefault(_warning);
+
+	var _react = __webpack_require__(1);
+
+	var _react2 = _interopRequireDefault(_react);
 
 	var _historyLibCreateHashHistory = __webpack_require__(181);
 
 	var _historyLibCreateHashHistory2 = _interopRequireDefault(_historyLibCreateHashHistory);
 
-	var _RouteUtils = __webpack_require__(195);
+	var _RouteUtils = __webpack_require__(199);
 
-	var _RoutingContext = __webpack_require__(196);
+	var _RoutingContext = __webpack_require__(200);
 
 	var _RoutingContext2 = _interopRequireDefault(_RoutingContext);
 
-	var _useRoutes = __webpack_require__(199);
+	var _useRoutes = __webpack_require__(204);
 
 	var _useRoutes2 = _interopRequireDefault(_useRoutes);
 
-	var _PropTypes = __webpack_require__(211);
+	var _PropTypes = __webpack_require__(214);
 
 	var _React$PropTypes = _react2['default'].PropTypes;
 	var func = _React$PropTypes.func;
@@ -23156,28 +23339,13 @@
 	 * it needs each time the URL changes.
 	 */
 
-	var Router = (function (_React$Component) {
-	  _inherits(Router, _React$Component);
-
-	  _createClass(Router, null, [{
-	    key: 'propTypes',
-	    value: {
-	      history: object,
-	      children: _PropTypes.routes,
-	      routes: _PropTypes.routes, // alias for children
-	      createElement: func,
-	      onError: func,
-	      onUpdate: func,
-	      parseQueryString: func,
-	      stringifyQuery: func
-	    },
-	    enumerable: true
-	  }]);
+	var Router = (function (_Component) {
+	  _inherits(Router, _Component);
 
 	  function Router(props, context) {
 	    _classCallCheck(this, Router);
 
-	    _React$Component.call(this, props, context);
+	    _Component.call(this, props, context);
 
 	    this.state = {
 	      location: null,
@@ -23225,8 +23393,12 @@
 	    });
 	  };
 
+	  /* istanbul ignore next: sanity check */
+
 	  Router.prototype.componentWillReceiveProps = function componentWillReceiveProps(nextProps) {
-	    _warning2['default'](nextProps.history === this.props.history, 'You cannot change <Router history>; it will be ignored');
+	    process.env.NODE_ENV !== 'production' ? _warning2['default'](nextProps.history === this.props.history, 'You cannot change <Router history>; it will be ignored') : undefined;
+
+	    process.env.NODE_ENV !== 'production' ? _warning2['default']((nextProps.routes || nextProps.children) === (this.props.routes || this.props.children), 'You cannot change <Router routes>; it will be ignored') : undefined;
 	  };
 
 	  Router.prototype.componentWillUnmount = function componentWillUnmount() {
@@ -23239,25 +23411,52 @@
 	    var routes = _state.routes;
 	    var params = _state.params;
 	    var components = _state.components;
-	    var createElement = this.props.createElement;
+	    var _props2 = this.props;
+	    var RoutingContext = _props2.RoutingContext;
+	    var createElement = _props2.createElement;
+
+	    var props = _objectWithoutProperties(_props2, ['RoutingContext', 'createElement']);
 
 	    if (location == null) return null; // Async match
 
-	    return _react2['default'].createElement(_RoutingContext2['default'], {
+	    // Only forward non-Router-specific props to routing context, as those are
+	    // the only ones that might be custom routing context props.
+	    Object.keys(Router.propTypes).forEach(function (propType) {
+	      return delete props[propType];
+	    });
+
+	    return _react2['default'].createElement(RoutingContext, _extends({}, props, {
 	      history: this.history,
 	      createElement: createElement,
 	      location: location,
 	      routes: routes,
 	      params: params,
 	      components: components
-	    });
+	    }));
 	  };
 
 	  return Router;
-	})(_react2['default'].Component);
+	})(_react.Component);
+
+	Router.propTypes = {
+	  history: object,
+	  children: _PropTypes.routes,
+	  routes: _PropTypes.routes, // alias for children
+	  RoutingContext: func.isRequired,
+	  createElement: func,
+	  onError: func,
+	  onUpdate: func,
+	  parseQueryString: func,
+	  stringifyQuery: func
+	};
+
+	Router.defaultProps = {
+	  RoutingContext: _RoutingContext2['default']
+	};
 
 	exports['default'] = Router;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
 /* 180 */
@@ -23330,7 +23529,7 @@
 /* 181 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
@@ -23338,25 +23537,29 @@
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-	var _warning = __webpack_require__(180);
+	var _warning = __webpack_require__(182);
 
 	var _warning2 = _interopRequireDefault(_warning);
 
-	var _invariant = __webpack_require__(182);
+	var _invariant = __webpack_require__(183);
 
 	var _invariant2 = _interopRequireDefault(_invariant);
 
-	var _Actions = __webpack_require__(183);
+	var _Actions = __webpack_require__(184);
 
-	var _ExecutionEnvironment = __webpack_require__(184);
+	var _ExecutionEnvironment = __webpack_require__(185);
 
-	var _DOMUtils = __webpack_require__(185);
+	var _DOMUtils = __webpack_require__(186);
 
-	var _DOMStateStorage = __webpack_require__(186);
+	var _DOMStateStorage = __webpack_require__(187);
 
-	var _createDOMHistory = __webpack_require__(187);
+	var _createDOMHistory = __webpack_require__(188);
 
 	var _createDOMHistory2 = _interopRequireDefault(_createDOMHistory);
+
+	var _parsePath = __webpack_require__(195);
+
+	var _parsePath2 = _interopRequireDefault(_parsePath);
 
 	function isAbsolutePath(path) {
 	  return typeof path === 'string' && path.charAt(0) === '/';
@@ -23390,7 +23593,7 @@
 	function createHashHistory() {
 	  var options = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
 
-	  _invariant2['default'](_ExecutionEnvironment.canUseDOM, 'Hash history needs a DOM');
+	  !_ExecutionEnvironment.canUseDOM ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, 'Hash history needs a DOM') : _invariant2['default'](false) : undefined;
 
 	  var queryKey = options.queryKey;
 
@@ -23416,7 +23619,9 @@
 	      key = state = null;
 	    }
 
-	    return history.createLocation(path, state, undefined, key);
+	    var location = _parsePath2['default'](path);
+
+	    return history.createLocation(_extends({}, location, { state: state }), undefined, key);
 	  }
 
 	  function startHashChangeListener(_ref) {
@@ -23448,24 +23653,25 @@
 
 	    var path = (basename || '') + pathname + search;
 
-	    if (queryKey) path = addQueryStringValueToPath(path, queryKey, key);
-
-	    if (path === _DOMUtils.getHashPath()) {
-	      _warning2['default'](false, 'You cannot %s the same path using hash history', action);
+	    if (queryKey) {
+	      path = addQueryStringValueToPath(path, queryKey, key);
+	      _DOMStateStorage.saveState(key, state);
 	    } else {
-	      if (queryKey) {
-	        _DOMStateStorage.saveState(key, state);
-	      } else {
-	        // Drop key and state.
-	        location.key = location.state = null;
-	      }
+	      // Drop key and state.
+	      location.key = location.state = null;
+	    }
 
-	      if (action === _Actions.PUSH) {
+	    var currentHash = _DOMUtils.getHashPath();
+
+	    if (action === _Actions.PUSH) {
+	      if (currentHash !== path) {
 	        window.location.hash = path;
 	      } else {
-	        // REPLACE
-	        _DOMUtils.replaceHashPath(path);
+	        process.env.NODE_ENV !== 'production' ? _warning2['default'](false, 'You cannot PUSH the same path using hash history') : undefined;
 	      }
+	    } else if (currentHash !== path) {
+	      // REPLACE
+	      _DOMUtils.replaceHashPath(path);
 	    }
 	  }
 
@@ -23502,22 +23708,22 @@
 	    };
 	  }
 
-	  function pushState(state, path) {
-	    _warning2['default'](queryKey || state == null, 'You cannot use state without a queryKey it will be dropped');
+	  function push(location) {
+	    process.env.NODE_ENV !== 'production' ? _warning2['default'](queryKey || location.state == null, 'You cannot use state without a queryKey it will be dropped') : undefined;
 
-	    history.pushState(state, path);
+	    history.push(location);
 	  }
 
-	  function replaceState(state, path) {
-	    _warning2['default'](queryKey || state == null, 'You cannot use state without a queryKey it will be dropped');
+	  function replace(location) {
+	    process.env.NODE_ENV !== 'production' ? _warning2['default'](queryKey || location.state == null, 'You cannot use state without a queryKey it will be dropped') : undefined;
 
-	    history.replaceState(state, path);
+	    history.replace(location);
 	  }
 
 	  var goIsSupportedWithoutReload = _DOMUtils.supportsGoWithoutReloadUsingHash();
 
 	  function go(n) {
-	    _warning2['default'](goIsSupportedWithoutReload, 'Hash history go(n) causes a full page reload in this browser');
+	    process.env.NODE_ENV !== 'production' ? _warning2['default'](goIsSupportedWithoutReload, 'Hash history go(n) causes a full page reload in this browser') : undefined;
 
 	    history.go(n);
 	  }
@@ -23540,23 +23746,108 @@
 	    if (--listenerCount === 0) stopHashChangeListener();
 	  }
 
+	  // deprecated
+	  function pushState(state, path) {
+	    process.env.NODE_ENV !== 'production' ? _warning2['default'](queryKey || state == null, 'You cannot use state without a queryKey it will be dropped') : undefined;
+
+	    history.pushState(state, path);
+	  }
+
+	  // deprecated
+	  function replaceState(state, path) {
+	    process.env.NODE_ENV !== 'production' ? _warning2['default'](queryKey || state == null, 'You cannot use state without a queryKey it will be dropped') : undefined;
+
+	    history.replaceState(state, path);
+	  }
+
 	  return _extends({}, history, {
 	    listenBefore: listenBefore,
 	    listen: listen,
-	    pushState: pushState,
-	    replaceState: replaceState,
+	    push: push,
+	    replace: replace,
 	    go: go,
 	    createHref: createHref,
-	    registerTransitionHook: registerTransitionHook,
-	    unregisterTransitionHook: unregisterTransitionHook
+
+	    registerTransitionHook: registerTransitionHook, // deprecated - warning is in createHistory
+	    unregisterTransitionHook: unregisterTransitionHook, // deprecated - warning is in createHistory
+	    pushState: pushState, // deprecated - warning is in createHistory
+	    replaceState: replaceState // deprecated - warning is in createHistory
 	  });
 	}
 
 	exports['default'] = createHashHistory;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
 /* 182 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {/**
+	 * Copyright 2014-2015, Facebook, Inc.
+	 * All rights reserved.
+	 *
+	 * This source code is licensed under the BSD-style license found in the
+	 * LICENSE file in the root directory of this source tree. An additional grant
+	 * of patent rights can be found in the PATENTS file in the same directory.
+	 */
+
+	'use strict';
+
+	/**
+	 * Similar to invariant but only logs a warning if the condition is not met.
+	 * This can be used to log issues in development environments in critical
+	 * paths. Removing the logging code for production environments will keep the
+	 * same logic and follow the same code paths.
+	 */
+
+	var warning = function() {};
+
+	if (process.env.NODE_ENV !== 'production') {
+	  warning = function(condition, format, args) {
+	    var len = arguments.length;
+	    args = new Array(len > 2 ? len - 2 : 0);
+	    for (var key = 2; key < len; key++) {
+	      args[key - 2] = arguments[key];
+	    }
+	    if (format === undefined) {
+	      throw new Error(
+	        '`warning(condition, format, ...args)` requires a warning ' +
+	        'message argument'
+	      );
+	    }
+
+	    if (format.length < 10 || (/^[s\W]*$/).test(format)) {
+	      throw new Error(
+	        'The warning format should be able to uniquely identify this ' +
+	        'warning. Please, use a more descriptive format than: ' + format
+	      );
+	    }
+
+	    if (!condition) {
+	      var argIndex = 0;
+	      var message = 'Warning: ' +
+	        format.replace(/%s/g, function() {
+	          return args[argIndex++];
+	        });
+	      if (typeof console !== 'undefined') {
+	        console.error(message);
+	      }
+	      try {
+	        // This error was thrown as a convenience so that you can use this stack
+	        // to find the callsite that caused this warning to fire.
+	        throw new Error(message);
+	      } catch(x) {}
+	    }
+	  };
+	}
+
+	module.exports = warning;
+
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
+
+/***/ },
+/* 183 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -23566,8 +23857,6 @@
 	 * This source code is licensed under the BSD-style license found in the
 	 * LICENSE file in the root directory of this source tree. An additional grant
 	 * of patent rights can be found in the PATENTS file in the same directory.
-	 *
-	 * @providesModule invariant
 	 */
 
 	'use strict';
@@ -23601,9 +23890,9 @@
 	      var args = [a, b, c, d, e, f];
 	      var argIndex = 0;
 	      error = new Error(
-	        'Invariant Violation: ' +
 	        format.replace(/%s/g, function() { return args[argIndex++]; })
 	      );
+	      error.name = 'Invariant Violation';
 	    }
 
 	    error.framesToPop = 1; // we don't care about invariant's own frame
@@ -23616,7 +23905,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 183 */
+/* 184 */
 /***/ function(module, exports) {
 
 	/**
@@ -23652,7 +23941,7 @@
 	};
 
 /***/ },
-/* 184 */
+/* 185 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -23662,7 +23951,7 @@
 	exports.canUseDOM = canUseDOM;
 
 /***/ },
-/* 185 */
+/* 186 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -23717,7 +24006,7 @@
 	}
 
 	/**
-	 * Returns true if the HTML5 history API is supported. Taken from modernizr.
+	 * Returns true if the HTML5 history API is supported. Taken from Modernizr.
 	 *
 	 * https://github.com/Modernizr/Modernizr/blob/master/LICENSE
 	 * https://github.com/Modernizr/Modernizr/blob/master/feature-detects/history.js
@@ -23727,6 +24016,11 @@
 	function supportsHistory() {
 	  var ua = navigator.userAgent;
 	  if ((ua.indexOf('Android 2.') !== -1 || ua.indexOf('Android 4.0') !== -1) && ua.indexOf('Mobile Safari') !== -1 && ua.indexOf('Chrome') === -1 && ua.indexOf('Windows Phone') === -1) {
+	    return false;
+	  }
+	  // FIXME: Work around our browser history not working correctly on Chrome
+	  // iOS: https://github.com/rackt/react-router/issues/2565
+	  if (ua.indexOf('CriOS') !== -1) {
 	    return false;
 	  }
 	  return window.history && 'pushState' in window.history;
@@ -23742,9 +24036,10 @@
 	}
 
 /***/ },
-/* 186 */
+/* 187 */
 /***/ function(module, exports, __webpack_require__) {
 
+	/* WEBPACK VAR INJECTION */(function(process) {/*eslint-disable no-empty */
 	'use strict';
 
 	exports.__esModule = true;
@@ -23753,13 +24048,13 @@
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-	var _warning = __webpack_require__(180);
+	var _warning = __webpack_require__(182);
 
 	var _warning2 = _interopRequireDefault(_warning);
 
-	/*eslint-disable no-empty */
 	var KeyPrefix = '@@History/';
 	var QuotaExceededError = 'QuotaExceededError';
+	var SecurityError = 'SecurityError';
 
 	function createKey(key) {
 	  return KeyPrefix + key;
@@ -23769,9 +24064,17 @@
 	  try {
 	    window.sessionStorage.setItem(createKey(key), JSON.stringify(state));
 	  } catch (error) {
-	    if (error.name === QuotaExceededError || window.sessionStorage.length === 0) {
-	      // Probably in Safari "private mode" where sessionStorage quota is 0. #42
-	      _warning2['default'](false, '[history] Unable to save state; sessionStorage is not available in Safari private mode');
+	    if (error.name === SecurityError) {
+	      // Blocking cookies in Chrome/Firefox/Safari throws SecurityError on any
+	      // attempt to access window.sessionStorage.
+	      process.env.NODE_ENV !== 'production' ? _warning2['default'](false, '[history] Unable to save state; sessionStorage is not available due to security settings') : undefined;
+
+	      return;
+	    }
+
+	    if (error.name === QuotaExceededError && window.sessionStorage.length === 0) {
+	      // Safari "private mode" throws QuotaExceededError.
+	      process.env.NODE_ENV !== 'production' ? _warning2['default'](false, '[history] Unable to save state; sessionStorage is not available in Safari private mode') : undefined;
 
 	      return;
 	    }
@@ -23781,7 +24084,18 @@
 	}
 
 	function readState(key) {
-	  var json = window.sessionStorage.getItem(createKey(key));
+	  var json = undefined;
+	  try {
+	    json = window.sessionStorage.getItem(createKey(key));
+	  } catch (error) {
+	    if (error.name === SecurityError) {
+	      // Blocking cookies in Chrome/Firefox/Safari throws SecurityError on any
+	      // attempt to access window.sessionStorage.
+	      process.env.NODE_ENV !== 'production' ? _warning2['default'](false, '[history] Unable to read state; sessionStorage is not available due to security settings') : undefined;
+
+	      return null;
+	    }
+	  }
 
 	  if (json) {
 	    try {
@@ -23793,12 +24107,13 @@
 
 	  return null;
 	}
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 187 */
+/* 188 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
@@ -23806,15 +24121,15 @@
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-	var _invariant = __webpack_require__(182);
+	var _invariant = __webpack_require__(183);
 
 	var _invariant2 = _interopRequireDefault(_invariant);
 
-	var _ExecutionEnvironment = __webpack_require__(184);
+	var _ExecutionEnvironment = __webpack_require__(185);
 
-	var _DOMUtils = __webpack_require__(185);
+	var _DOMUtils = __webpack_require__(186);
 
-	var _createHistory = __webpack_require__(188);
+	var _createHistory = __webpack_require__(189);
 
 	var _createHistory2 = _interopRequireDefault(_createHistory);
 
@@ -23826,7 +24141,7 @@
 	  }));
 
 	  function listen(listener) {
-	    _invariant2['default'](_ExecutionEnvironment.canUseDOM, 'DOM history needs a DOM');
+	    !_ExecutionEnvironment.canUseDOM ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, 'DOM history needs a DOM') : _invariant2['default'](false) : undefined;
 
 	    return history.listen(listener);
 	  }
@@ -23838,11 +24153,13 @@
 
 	exports['default'] = createDOMHistory;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 188 */
+/* 189 */
 /***/ function(module, exports, __webpack_require__) {
 
+	//import warning from 'warning'
 	'use strict';
 
 	exports.__esModule = true;
@@ -23851,38 +24168,32 @@
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-	var _warning = __webpack_require__(180);
-
-	var _warning2 = _interopRequireDefault(_warning);
-
-	var _deepEqual = __webpack_require__(189);
+	var _deepEqual = __webpack_require__(190);
 
 	var _deepEqual2 = _interopRequireDefault(_deepEqual);
 
-	var _AsyncUtils = __webpack_require__(192);
+	var _AsyncUtils = __webpack_require__(193);
 
-	var _Actions = __webpack_require__(183);
+	var _Actions = __webpack_require__(184);
 
-	var _runTransitionHook = __webpack_require__(193);
+	var _createLocation2 = __webpack_require__(194);
+
+	var _createLocation3 = _interopRequireDefault(_createLocation2);
+
+	var _runTransitionHook = __webpack_require__(197);
 
 	var _runTransitionHook2 = _interopRequireDefault(_runTransitionHook);
 
-	var _deprecate = __webpack_require__(194);
+	var _parsePath = __webpack_require__(195);
+
+	var _parsePath2 = _interopRequireDefault(_parsePath);
+
+	var _deprecate = __webpack_require__(198);
 
 	var _deprecate2 = _interopRequireDefault(_deprecate);
 
 	function createRandomKey(length) {
 	  return Math.random().toString(36).substr(2, length);
-	}
-
-	function extractPath(string) {
-	  var match = string.match(/^https?:\/\/[^\/]*/);
-
-	  if (match == null) return string;
-
-	  _warning2['default'](false, 'Location path must be pathname + query string only, not a fully qualified URL like "%s"', string);
-
-	  return string.substring(match[0].length);
 	}
 
 	function locationsAreEqual(a, b) {
@@ -23995,8 +24306,15 @@
 	      if (pendingLocation !== nextLocation) return; // Transition was interrupted.
 
 	      if (ok) {
-	        finishTransition(nextLocation);
-	        updateLocation(nextLocation);
+	        // treat PUSH to current path like REPLACE to be consistent with browsers
+	        if (nextLocation.action === _Actions.PUSH) {
+	          var prevPath = createPath(location);
+	          var nextPath = createPath(nextLocation);
+
+	          if (nextPath === prevPath) nextLocation.action = _Actions.REPLACE;
+	        }
+
+	        if (finishTransition(nextLocation) !== false) updateLocation(nextLocation);
 	      } else if (location && nextLocation.action === _Actions.POP) {
 	        var prevIndex = allKeys.indexOf(location.key);
 	        var nextIndex = allKeys.indexOf(nextLocation.key);
@@ -24006,12 +24324,12 @@
 	    });
 	  }
 
-	  function pushState(state, path) {
-	    transitionTo(createLocation(path, state, _Actions.PUSH, createKey()));
+	  function push(location) {
+	    transitionTo(createLocation(location, _Actions.PUSH, createKey()));
 	  }
 
-	  function replaceState(state, path) {
-	    transitionTo(createLocation(path, state, _Actions.REPLACE, createKey()));
+	  function replace(location) {
+	    transitionTo(createLocation(location, _Actions.REPLACE, createKey()));
 	  }
 
 	  function goBack() {
@@ -24026,46 +24344,45 @@
 	    return createRandomKey(keyLength);
 	  }
 
-	  function createPath(path) {
-	    return path;
+	  function createPath(location) {
+	    if (location == null || typeof location === 'string') return location;
+
+	    var pathname = location.pathname;
+	    var search = location.search;
+	    var hash = location.hash;
+
+	    var result = pathname;
+
+	    if (search) result += search;
+
+	    if (hash) result += hash;
+
+	    return result;
 	  }
 
-	  function createHref(path) {
-	    return path;
+	  function createHref(location) {
+	    return createPath(location);
 	  }
 
-	  function createLocation() {
-	    var path = arguments.length <= 0 || arguments[0] === undefined ? '/' : arguments[0];
-	    var state = arguments.length <= 1 || arguments[1] === undefined ? null : arguments[1];
-	    var action = arguments.length <= 2 || arguments[2] === undefined ? _Actions.POP : arguments[2];
-	    var key = arguments.length <= 3 || arguments[3] === undefined ? createKey() : arguments[3];
+	  function createLocation(location, action) {
+	    var key = arguments.length <= 2 || arguments[2] === undefined ? createKey() : arguments[2];
 
-	    var pathname = extractPath(path);
-	    var search = '';
-	    var hash = '';
+	    if (typeof action === 'object') {
+	      //warning(
+	      //  false,
+	      //  'The state (2nd) argument to history.createLocation is deprecated; use a ' +
+	      //  'location descriptor instead'
+	      //)
 
-	    var hashIndex = pathname.indexOf('#');
-	    if (hashIndex !== -1) {
-	      hash = pathname.substring(hashIndex);
-	      pathname = pathname.substring(0, hashIndex);
+	      if (typeof location === 'string') location = _parsePath2['default'](location);
+
+	      location = _extends({}, location, { state: action });
+
+	      action = key;
+	      key = arguments[3] || createKey();
 	    }
 
-	    var searchIndex = pathname.indexOf('?');
-	    if (searchIndex !== -1) {
-	      search = pathname.substring(searchIndex);
-	      pathname = pathname.substring(0, searchIndex);
-	    }
-
-	    if (pathname === '') pathname = '/';
-
-	    return {
-	      pathname: pathname,
-	      search: search,
-	      hash: hash,
-	      state: state,
-	      action: action,
-	      key: key
-	    };
+	    return _createLocation3['default'](location, action, key);
 	  }
 
 	  // deprecated
@@ -24095,12 +24412,26 @@
 	    });
 	  }
 
+	  // deprecated
+	  function pushState(state, path) {
+	    if (typeof path === 'string') path = _parsePath2['default'](path);
+
+	    push(_extends({ state: state }, path));
+	  }
+
+	  // deprecated
+	  function replaceState(state, path) {
+	    if (typeof path === 'string') path = _parsePath2['default'](path);
+
+	    replace(_extends({ state: state }, path));
+	  }
+
 	  return {
 	    listenBefore: listenBefore,
 	    listen: listen,
 	    transitionTo: transitionTo,
-	    pushState: pushState,
-	    replaceState: replaceState,
+	    push: push,
+	    replace: replace,
 	    go: go,
 	    goBack: goBack,
 	    goForward: goForward,
@@ -24111,7 +24442,9 @@
 
 	    setState: _deprecate2['default'](setState, 'setState is deprecated; use location.key to save state instead'),
 	    registerTransitionHook: _deprecate2['default'](registerTransitionHook, 'registerTransitionHook is deprecated; use listenBefore instead'),
-	    unregisterTransitionHook: _deprecate2['default'](unregisterTransitionHook, 'unregisterTransitionHook is deprecated; use the callback returned from listenBefore instead')
+	    unregisterTransitionHook: _deprecate2['default'](unregisterTransitionHook, 'unregisterTransitionHook is deprecated; use the callback returned from listenBefore instead'),
+	    pushState: _deprecate2['default'](pushState, 'pushState is deprecated; use push instead'),
+	    replaceState: _deprecate2['default'](replaceState, 'replaceState is deprecated; use replace instead')
 	  };
 	}
 
@@ -24119,12 +24452,12 @@
 	module.exports = exports['default'];
 
 /***/ },
-/* 189 */
+/* 190 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var pSlice = Array.prototype.slice;
-	var objectKeys = __webpack_require__(190);
-	var isArguments = __webpack_require__(191);
+	var objectKeys = __webpack_require__(191);
+	var isArguments = __webpack_require__(192);
 
 	var deepEqual = module.exports = function (actual, expected, opts) {
 	  if (!opts) opts = {};
@@ -24219,7 +24552,7 @@
 
 
 /***/ },
-/* 190 */
+/* 191 */
 /***/ function(module, exports) {
 
 	exports = module.exports = typeof Object.keys === 'function'
@@ -24234,7 +24567,7 @@
 
 
 /***/ },
-/* 191 */
+/* 192 */
 /***/ function(module, exports) {
 
 	var supportsArgumentsClass = (function(){
@@ -24260,7 +24593,7 @@
 
 
 /***/ },
-/* 192 */
+/* 193 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -24291,16 +24624,143 @@
 	}
 
 /***/ },
-/* 193 */
+/* 194 */
 /***/ function(module, exports, __webpack_require__) {
 
+	//import warning from 'warning'
 	'use strict';
+
+	exports.__esModule = true;
+
+	var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+	var _Actions = __webpack_require__(184);
+
+	var _parsePath = __webpack_require__(195);
+
+	var _parsePath2 = _interopRequireDefault(_parsePath);
+
+	function createLocation() {
+	  var location = arguments.length <= 0 || arguments[0] === undefined ? '/' : arguments[0];
+	  var action = arguments.length <= 1 || arguments[1] === undefined ? _Actions.POP : arguments[1];
+	  var key = arguments.length <= 2 || arguments[2] === undefined ? null : arguments[2];
+
+	  var _fourthArg = arguments.length <= 3 || arguments[3] === undefined ? null : arguments[3];
+
+	  if (typeof location === 'string') location = _parsePath2['default'](location);
+
+	  if (typeof action === 'object') {
+	    //warning(
+	    //  false,
+	    //  'The state (2nd) argument to createLocation is deprecated; use a ' +
+	    //  'location descriptor instead'
+	    //)
+
+	    location = _extends({}, location, { state: action });
+
+	    action = key || _Actions.POP;
+	    key = _fourthArg;
+	  }
+
+	  var pathname = location.pathname || '/';
+	  var search = location.search || '';
+	  var hash = location.hash || '';
+	  var state = location.state || null;
+
+	  return {
+	    pathname: pathname,
+	    search: search,
+	    hash: hash,
+	    state: state,
+	    action: action,
+	    key: key
+	  };
+	}
+
+	exports['default'] = createLocation;
+	module.exports = exports['default'];
+
+/***/ },
+/* 195 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-	var _warning = __webpack_require__(180);
+	var _warning = __webpack_require__(182);
+
+	var _warning2 = _interopRequireDefault(_warning);
+
+	var _extractPath = __webpack_require__(196);
+
+	var _extractPath2 = _interopRequireDefault(_extractPath);
+
+	function parsePath(path) {
+	  var pathname = _extractPath2['default'](path);
+	  var search = '';
+	  var hash = '';
+
+	  process.env.NODE_ENV !== 'production' ? _warning2['default'](path === pathname, 'A path must be pathname + search + hash only, not a fully qualified URL like "%s"', path) : undefined;
+
+	  var hashIndex = pathname.indexOf('#');
+	  if (hashIndex !== -1) {
+	    hash = pathname.substring(hashIndex);
+	    pathname = pathname.substring(0, hashIndex);
+	  }
+
+	  var searchIndex = pathname.indexOf('?');
+	  if (searchIndex !== -1) {
+	    search = pathname.substring(searchIndex);
+	    pathname = pathname.substring(0, searchIndex);
+	  }
+
+	  if (pathname === '') pathname = '/';
+
+	  return {
+	    pathname: pathname,
+	    search: search,
+	    hash: hash
+	  };
+	}
+
+	exports['default'] = parsePath;
+	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
+
+/***/ },
+/* 196 */
+/***/ function(module, exports) {
+
+	"use strict";
+
+	exports.__esModule = true;
+	function extractPath(string) {
+	  var match = string.match(/^https?:\/\/[^\/]*/);
+
+	  if (match == null) return string;
+
+	  return string.substring(match[0].length);
+	}
+
+	exports["default"] = extractPath;
+	module.exports = exports["default"];
+
+/***/ },
+/* 197 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
+
+	exports.__esModule = true;
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+	var _warning = __webpack_require__(182);
 
 	var _warning2 = _interopRequireDefault(_warning);
 
@@ -24312,42 +24772,39 @@
 	    // call the callback with the return value.
 	    callback(result);
 	  } else {
-	    _warning2['default'](result === undefined, 'You should not "return" in a transition hook with a callback argument; call the callback instead');
+	    process.env.NODE_ENV !== 'production' ? _warning2['default'](result === undefined, 'You should not "return" in a transition hook with a callback argument; call the callback instead') : undefined;
 	  }
 	}
 
 	exports['default'] = runTransitionHook;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 194 */
-/***/ function(module, exports, __webpack_require__) {
+/* 198 */
+/***/ function(module, exports) {
 
-	'use strict';
+	//import warning from 'warning'
+
+	"use strict";
 
 	exports.__esModule = true;
-
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
-
-	var _warning = __webpack_require__(180);
-
-	var _warning2 = _interopRequireDefault(_warning);
-
-	function deprecate(fn, message) {
-	  return function () {
-	    _warning2['default'](false, '[history] ' + message);
-	    return fn.apply(this, arguments);
-	  };
+	function deprecate(fn) {
+	  return fn;
+	  //return function () {
+	  //  warning(false, '[history] ' + message)
+	  //  return fn.apply(this, arguments)
+	  //}
 	}
 
-	exports['default'] = deprecate;
-	module.exports = exports['default'];
+	exports["default"] = deprecate;
+	module.exports = exports["default"];
 
 /***/ },
-/* 195 */
+/* 199 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
@@ -24383,7 +24840,8 @@
 	    if (propTypes.hasOwnProperty(propName)) {
 	      var error = propTypes[propName](props, propName, componentName);
 
-	      if (error instanceof Error) _warning2['default'](false, error.message);
+	      /* istanbul ignore if: error logging */
+	      if (error instanceof Error) process.env.NODE_ENV !== 'production' ? _warning2['default'](false, error.message) : undefined;
 	    }
 	  }
 	}
@@ -24460,16 +24918,17 @@
 
 	  return routes;
 	}
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 196 */
+/* 200 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
-	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+	var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -24477,15 +24936,17 @@
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+	var _invariant = __webpack_require__(201);
+
+	var _invariant2 = _interopRequireDefault(_invariant);
+
 	var _react = __webpack_require__(1);
 
 	var _react2 = _interopRequireDefault(_react);
 
-	var _invariant = __webpack_require__(182);
+	var _RouteUtils = __webpack_require__(199);
 
-	var _invariant2 = _interopRequireDefault(_invariant);
-
-	var _getRouteParams = __webpack_require__(197);
+	var _getRouteParams = __webpack_require__(202);
 
 	var _getRouteParams2 = _interopRequireDefault(_getRouteParams);
 
@@ -24499,20 +24960,21 @@
 	 * and sets the history object and the current location in context.
 	 */
 
-	var RoutingContext = (function (_React$Component) {
-	  _inherits(RoutingContext, _React$Component);
+	var RoutingContext = (function (_Component) {
+	  _inherits(RoutingContext, _Component);
 
 	  function RoutingContext() {
 	    _classCallCheck(this, RoutingContext);
 
-	    _React$Component.apply(this, arguments);
+	    _Component.apply(this, arguments);
 	  }
 
 	  RoutingContext.prototype.getChildContext = function getChildContext() {
-	    return {
-	      history: this.props.history,
-	      location: this.props.location
-	    };
+	    var _props = this.props;
+	    var history = _props.history;
+	    var location = _props.location;
+
+	    return { history: history, location: location };
 	  };
 
 	  RoutingContext.prototype.createElement = function createElement(component, props) {
@@ -24522,18 +24984,18 @@
 	  RoutingContext.prototype.render = function render() {
 	    var _this = this;
 
-	    var _props = this.props;
-	    var history = _props.history;
-	    var location = _props.location;
-	    var routes = _props.routes;
-	    var params = _props.params;
-	    var components = _props.components;
+	    var _props2 = this.props;
+	    var history = _props2.history;
+	    var location = _props2.location;
+	    var routes = _props2.routes;
+	    var params = _props2.params;
+	    var components = _props2.components;
 
 	    var element = null;
 
 	    if (components) {
 	      element = components.reduceRight(function (element, components, index) {
-	        if (components == null) return element; // Don't create new children use the grandchildren.
+	        if (components == null) return element; // Don't create new children; use the grandchildren.
 
 	        var route = routes[index];
 	        var routeParams = _getRouteParams2['default'](route, params);
@@ -24546,66 +25008,131 @@
 	          routes: routes
 	        };
 
-	        if (element) props.children = element;
+	        if (_RouteUtils.isReactChildren(element)) {
+	          props.children = element;
+	        } else if (element) {
+	          for (var prop in element) {
+	            if (element.hasOwnProperty(prop)) props[prop] = element[prop];
+	          }
+	        }
 
 	        if (typeof components === 'object') {
 	          var elements = {};
 
 	          for (var key in components) {
-	            if (components.hasOwnProperty(key)) elements[key] = _this.createElement(components[key], props);
-	          }return elements;
+	            if (components.hasOwnProperty(key)) {
+	              // Pass through the key as a prop to createElement to allow
+	              // custom createElement functions to know which named component
+	              // they're rendering, for e.g. matching up to fetched data.
+	              elements[key] = _this.createElement(components[key], _extends({
+	                key: key }, props));
+	            }
+	          }
+
+	          return elements;
 	        }
 
 	        return _this.createElement(components, props);
 	      }, element);
 	    }
 
-	    _invariant2['default'](element === null || element === false || _react2['default'].isValidElement(element), 'The root route must render a single element');
+	    !(element === null || element === false || _react2['default'].isValidElement(element)) ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, 'The root route must render a single element') : _invariant2['default'](false) : undefined;
 
 	    return element;
 	  };
 
-	  _createClass(RoutingContext, null, [{
-	    key: 'propTypes',
-	    value: {
-	      history: object.isRequired,
-	      createElement: func.isRequired,
-	      location: object.isRequired,
-	      routes: array.isRequired,
-	      params: object.isRequired,
-	      components: array.isRequired
-	    },
-	    enumerable: true
-	  }, {
-	    key: 'defaultProps',
-	    value: {
-	      createElement: _react2['default'].createElement
-	    },
-	    enumerable: true
-	  }, {
-	    key: 'childContextTypes',
-	    value: {
-	      history: object.isRequired,
-	      location: object.isRequired
-	    },
-	    enumerable: true
-	  }]);
-
 	  return RoutingContext;
-	})(_react2['default'].Component);
+	})(_react.Component);
+
+	RoutingContext.propTypes = {
+	  history: object.isRequired,
+	  createElement: func.isRequired,
+	  location: object.isRequired,
+	  routes: array.isRequired,
+	  params: object.isRequired,
+	  components: array.isRequired
+	};
+
+	RoutingContext.defaultProps = {
+	  createElement: _react2['default'].createElement
+	};
+
+	RoutingContext.childContextTypes = {
+	  history: object.isRequired,
+	  location: object.isRequired
+	};
 
 	exports['default'] = RoutingContext;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 197 */
+/* 201 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(process) {/**
+	 * Copyright 2013-2015, Facebook, Inc.
+	 * All rights reserved.
+	 *
+	 * This source code is licensed under the BSD-style license found in the
+	 * LICENSE file in the root directory of this source tree. An additional grant
+	 * of patent rights can be found in the PATENTS file in the same directory.
+	 */
+
+	'use strict';
+
+	/**
+	 * Use invariant() to assert state which your program assumes to be true.
+	 *
+	 * Provide sprintf-style format (only %s is supported) and arguments
+	 * to provide information about what broke and what you were
+	 * expecting.
+	 *
+	 * The invariant message will be stripped in production, but the invariant
+	 * will remain to ensure logic does not differ in production.
+	 */
+
+	var invariant = function(condition, format, a, b, c, d, e, f) {
+	  if (process.env.NODE_ENV !== 'production') {
+	    if (format === undefined) {
+	      throw new Error('invariant requires an error message argument');
+	    }
+	  }
+
+	  if (!condition) {
+	    var error;
+	    if (format === undefined) {
+	      error = new Error(
+	        'Minified exception occurred; use the non-minified dev environment ' +
+	        'for the full error message and additional helpful warnings.'
+	      );
+	    } else {
+	      var args = [a, b, c, d, e, f];
+	      var argIndex = 0;
+	      error = new Error(
+	        format.replace(/%s/g, function() { return args[argIndex++]; })
+	      );
+	      error.name = 'Invariant Violation';
+	    }
+
+	    error.framesToPop = 1; // we don't care about invariant's own frame
+	    throw error;
+	  }
+	};
+
+	module.exports = invariant;
+
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
+
+/***/ },
+/* 202 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
 	exports.__esModule = true;
 
-	var _PatternUtils = __webpack_require__(198);
+	var _PatternUtils = __webpack_require__(203);
 
 	/**
 	 * Extracts an object of params the given route cares about from
@@ -24627,10 +25154,10 @@
 	module.exports = exports['default'];
 
 /***/ },
-/* 198 */
+/* 203 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 	exports.compilePattern = compilePattern;
@@ -24641,7 +25168,7 @@
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-	var _invariant = __webpack_require__(182);
+	var _invariant = __webpack_require__(201);
 
 	var _invariant2 = _interopRequireDefault(_invariant);
 
@@ -24660,7 +25187,7 @@
 
 	  var match = undefined,
 	      lastIndex = 0,
-	      matcher = /:([a-zA-Z_$][a-zA-Z0-9_$]*)|\*|\(|\)/g;
+	      matcher = /:([a-zA-Z_$][a-zA-Z0-9_$]*)|\*\*|\*|\(|\)/g;
 	  while (match = matcher.exec(pattern)) {
 	    if (match.index !== lastIndex) {
 	      tokens.push(pattern.slice(lastIndex, match.index));
@@ -24670,6 +25197,9 @@
 	    if (match[1]) {
 	      regexpSource += '([^/?#]+)';
 	      paramNames.push(match[1]);
+	    } else if (match[0] === '**') {
+	      regexpSource += '([\\s\\S]*)';
+	      paramNames.push('splat');
 	    } else if (match[0] === '*') {
 	      regexpSource += '([\\s\\S]*?)';
 	      paramNames.push('splat');
@@ -24715,6 +25245,8 @@
 	 * - *              Consumes (non-greedy) all characters up to the next
 	 *                  character in the pattern, or to the end of the URL if
 	 *                  there is none
+	 * - **             Consumes (greedy) all characters up to the next character
+	 *                  in the pattern, or to the end of the URL if there is none
 	 *
 	 * The return value is an object with the following properties:
 	 *
@@ -24724,32 +25256,57 @@
 	 */
 
 	function matchPattern(pattern, pathname) {
+	  // Make leading slashes consistent between pattern and pathname.
+	  if (pattern.charAt(0) !== '/') {
+	    pattern = '/' + pattern;
+	  }
+	  if (pathname.charAt(0) !== '/') {
+	    pathname = '/' + pathname;
+	  }
+
 	  var _compilePattern2 = compilePattern(pattern);
 
 	  var regexpSource = _compilePattern2.regexpSource;
 	  var paramNames = _compilePattern2.paramNames;
 	  var tokens = _compilePattern2.tokens;
 
-	  regexpSource += '/*'; // Ignore trailing slashes
+	  regexpSource += '/*'; // Capture path separators
 
+	  // Special-case patterns like '*' for catch-all routes.
 	  var captureRemaining = tokens[tokens.length - 1] !== '*';
 
-	  if (captureRemaining) regexpSource += '([\\s\\S]*?)';
+	  if (captureRemaining) {
+	    // This will match newlines in the remaining path.
+	    regexpSource += '([\\s\\S]*?)';
+	  }
 
 	  var match = pathname.match(new RegExp('^' + regexpSource + '$', 'i'));
 
 	  var remainingPathname = undefined,
 	      paramValues = undefined;
 	  if (match != null) {
-	    paramValues = Array.prototype.slice.call(match, 1).map(function (v) {
-	      return v != null ? decodeURIComponent(v.replace(/\+/g, '%20')) : v;
-	    });
-
 	    if (captureRemaining) {
-	      remainingPathname = paramValues.pop();
+	      remainingPathname = match.pop();
+	      var matchedPath = match[0].substr(0, match[0].length - remainingPathname.length);
+
+	      // If we didn't match the entire pathname, then make sure that the match
+	      // we did get ends at a path separator (potentially the one we added
+	      // above at the beginning of the path, if the actual match was empty).
+	      if (remainingPathname && matchedPath.charAt(matchedPath.length - 1) !== '/') {
+	        return {
+	          remainingPathname: null,
+	          paramNames: paramNames,
+	          paramValues: null
+	        };
+	      }
 	    } else {
-	      remainingPathname = pathname.replace(match[0], '');
+	      // If this matched at all, then the match was the entire pathname.
+	      remainingPathname = '';
 	    }
+
+	    paramValues = match.slice(1).map(function (v) {
+	      return v != null ? decodeURIComponent(v) : v;
+	    });
 	  } else {
 	    remainingPathname = paramValues = null;
 	  }
@@ -24803,12 +25360,12 @@
 	  for (var i = 0, len = tokens.length; i < len; ++i) {
 	    token = tokens[i];
 
-	    if (token === '*') {
+	    if (token === '*' || token === '**') {
 	      paramValue = Array.isArray(params.splat) ? params.splat[splatIndex++] : params.splat;
 
-	      _invariant2['default'](paramValue != null || parenCount > 0, 'Missing splat #%s for path "%s"', splatIndex, pattern);
+	      !(paramValue != null || parenCount > 0) ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, 'Missing splat #%s for path "%s"', splatIndex, pattern) : _invariant2['default'](false) : undefined;
 
-	      if (paramValue != null) pathname += encodeURI(paramValue).replace(/%20/g, '+');
+	      if (paramValue != null) pathname += encodeURI(paramValue);
 	    } else if (token === '(') {
 	      parenCount += 1;
 	    } else if (token === ')') {
@@ -24817,9 +25374,9 @@
 	      paramName = token.substring(1);
 	      paramValue = params[paramName];
 
-	      _invariant2['default'](paramValue != null || parenCount > 0, 'Missing "%s" parameter for path "%s"', paramName, pattern);
+	      !(paramValue != null || parenCount > 0) ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, 'Missing "%s" parameter for path "%s"', paramName, pattern) : _invariant2['default'](false) : undefined;
 
-	      if (paramValue != null) pathname += encodeURIComponent(paramValue).replace(/%20/g, '+');
+	      if (paramValue != null) pathname += encodeURIComponent(paramValue);
 	    } else {
 	      pathname += token;
 	    }
@@ -24827,12 +25384,13 @@
 
 	  return pathname.replace(/\/+/g, '/');
 	}
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 199 */
+/* 204 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
@@ -24846,27 +25404,27 @@
 
 	var _warning2 = _interopRequireDefault(_warning);
 
-	var _historyLibActions = __webpack_require__(183);
+	var _historyLibActions = __webpack_require__(184);
 
-	var _historyLibUseQueries = __webpack_require__(200);
+	var _historyLibUseQueries = __webpack_require__(205);
 
 	var _historyLibUseQueries2 = _interopRequireDefault(_historyLibUseQueries);
 
-	var _computeChangedRoutes2 = __webpack_require__(205);
+	var _computeChangedRoutes2 = __webpack_require__(208);
 
 	var _computeChangedRoutes3 = _interopRequireDefault(_computeChangedRoutes2);
 
-	var _TransitionUtils = __webpack_require__(206);
+	var _TransitionUtils = __webpack_require__(209);
 
-	var _isActive2 = __webpack_require__(208);
+	var _isActive2 = __webpack_require__(211);
 
 	var _isActive3 = _interopRequireDefault(_isActive2);
 
-	var _getComponents = __webpack_require__(209);
+	var _getComponents = __webpack_require__(212);
 
 	var _getComponents2 = _interopRequireDefault(_getComponents);
 
-	var _matchRoutes = __webpack_require__(210);
+	var _matchRoutes = __webpack_require__(213);
 
 	var _matchRoutes2 = _interopRequireDefault(_matchRoutes);
 
@@ -24987,7 +25545,7 @@
 	        // matchRoutes() again in the listen callback.
 	        partialNextState = _extends({}, nextState, { location: location });
 
-	        var hooks = getRouteHooksForRoutes(_computeChangedRoutes3['default'](state, nextState).leaveRoutes);
+	        var hooks = getRouteHooksForRoutes(_computeChangedRoutes3['default'](state, partialNextState).leaveRoutes);
 
 	        var result = undefined;
 	        for (var i = 0, len = hooks.length; result == null && i < len; ++i) {
@@ -25105,7 +25663,7 @@
 	            } else if (nextState) {
 	              listener(null, nextState);
 	            } else {
-	              _warning2['default'](false, 'Location "%s" did not match any routes', location.pathname + location.search + location.hash);
+	              process.env.NODE_ENV !== 'production' ? _warning2['default'](false, 'Location "%s" did not match any routes', location.pathname + location.search + location.hash) : undefined;
 	            }
 	          });
 	        }
@@ -25123,12 +25681,13 @@
 
 	exports['default'] = useRoutes;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 200 */
+/* 205 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
@@ -25138,20 +25697,36 @@
 
 	function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
 
-	var _qs = __webpack_require__(201);
+	var _warning = __webpack_require__(182);
 
-	var _qs2 = _interopRequireDefault(_qs);
+	var _warning2 = _interopRequireDefault(_warning);
 
-	var _runTransitionHook = __webpack_require__(193);
+	var _queryString = __webpack_require__(206);
+
+	var _runTransitionHook = __webpack_require__(197);
 
 	var _runTransitionHook2 = _interopRequireDefault(_runTransitionHook);
 
+	var _parsePath = __webpack_require__(195);
+
+	var _parsePath2 = _interopRequireDefault(_parsePath);
+
+	var _deprecate = __webpack_require__(198);
+
+	var _deprecate2 = _interopRequireDefault(_deprecate);
+
+	var SEARCH_BASE_KEY = '$searchBase';
+
 	function defaultStringifyQuery(query) {
-	  return _qs2['default'].stringify(query, { arrayFormat: 'brackets' });
+	  return _queryString.stringify(query).replace(/%20/g, '+');
 	}
 
-	function defaultParseQueryString(queryString) {
-	  return _qs2['default'].parse(queryString);
+	var defaultParseQueryString = _queryString.parse;
+
+	function isNestedObject(object) {
+	  for (var p in object) {
+	    if (object.hasOwnProperty(p) && typeof object[p] === 'object' && !Array.isArray(object[p]) && object[p] !== null) return true;
+	  }return false;
 	}
 
 	/**
@@ -25173,16 +25748,42 @@
 	    if (typeof parseQueryString !== 'function') parseQueryString = defaultParseQueryString;
 
 	    function addQuery(location) {
-	      if (location.query == null) location.query = parseQueryString(location.search.substring(1));
+	      if (location.query == null) {
+	        var search = location.search;
+
+	        location.query = parseQueryString(search.substring(1));
+	        location[SEARCH_BASE_KEY] = { search: search, searchBase: '' };
+	      }
+
+	      // TODO: Instead of all the book-keeping here, this should just strip the
+	      // stringified query from the search.
 
 	      return location;
 	    }
 
-	    function appendQuery(pathname, query) {
-	      var queryString = undefined;
-	      if (query && (queryString = stringifyQuery(query)) !== '') return pathname + (pathname.indexOf('?') === -1 ? '?' : '&') + queryString;
+	    function appendQuery(location, query) {
+	      var _extends2;
 
-	      return pathname;
+	      var queryString = undefined;
+	      if (!query || (queryString = stringifyQuery(query)) === '') return location;
+
+	      process.env.NODE_ENV !== 'production' ? _warning2['default'](stringifyQuery !== defaultStringifyQuery || !isNestedObject(query), 'useQueries does not stringify nested query objects by default; ' + 'use a custom stringifyQuery function') : undefined;
+
+	      if (typeof location === 'string') location = _parsePath2['default'](location);
+
+	      var searchBaseSpec = location[SEARCH_BASE_KEY];
+	      var searchBase = undefined;
+	      if (searchBaseSpec && location.search === searchBaseSpec.search) {
+	        searchBase = searchBaseSpec.searchBase;
+	      } else {
+	        searchBase = location.search || '';
+	      }
+
+	      var search = searchBase + (searchBase ? '&' : '?') + queryString;
+
+	      return _extends({}, location, (_extends2 = {
+	        search: search
+	      }, _extends2[SEARCH_BASE_KEY] = { search: search, searchBase: searchBase }, _extends2));
 	    }
 
 	    // Override all read methods with query-aware versions.
@@ -25199,586 +25800,160 @@
 	    }
 
 	    // Override all write methods with query-aware versions.
-	    function pushState(state, pathname, query) {
-	      return history.pushState(state, appendQuery(pathname, query));
+	    function push(location) {
+	      history.push(appendQuery(location, location.query));
 	    }
 
-	    function replaceState(state, pathname, query) {
-	      return history.replaceState(state, appendQuery(pathname, query));
+	    function replace(location) {
+	      history.replace(appendQuery(location, location.query));
 	    }
 
-	    function createPath(pathname, query) {
-	      return history.createPath(appendQuery(pathname, query));
+	    function createPath(location, query) {
+	      //warning(
+	      //  !query,
+	      //  'the query argument to createPath is deprecated; use a location descriptor instead'
+	      //)
+	      return history.createPath(appendQuery(location, query || location.query));
 	    }
 
-	    function createHref(pathname, query) {
-	      return history.createHref(appendQuery(pathname, query));
+	    function createHref(location, query) {
+	      //warning(
+	      //  !query,
+	      //  'the query argument to createHref is deprecated; use a location descriptor instead'
+	      //)
+	      return history.createHref(appendQuery(location, query || location.query));
 	    }
 
 	    function createLocation() {
 	      return addQuery(history.createLocation.apply(history, arguments));
 	    }
 
+	    // deprecated
+	    function pushState(state, path, query) {
+	      if (typeof path === 'string') path = _parsePath2['default'](path);
+
+	      push(_extends({ state: state }, path, { query: query }));
+	    }
+
+	    // deprecated
+	    function replaceState(state, path, query) {
+	      if (typeof path === 'string') path = _parsePath2['default'](path);
+
+	      replace(_extends({ state: state }, path, { query: query }));
+	    }
+
 	    return _extends({}, history, {
 	      listenBefore: listenBefore,
 	      listen: listen,
-	      pushState: pushState,
-	      replaceState: replaceState,
+	      push: push,
+	      replace: replace,
 	      createPath: createPath,
 	      createHref: createHref,
-	      createLocation: createLocation
+	      createLocation: createLocation,
+
+	      pushState: _deprecate2['default'](pushState, 'pushState is deprecated; use push instead'),
+	      replaceState: _deprecate2['default'](replaceState, 'replaceState is deprecated; use replace instead')
 	    });
 	  };
 	}
 
 	exports['default'] = useQueries;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 201 */
+/* 206 */
 /***/ function(module, exports, __webpack_require__) {
 
-	// Load modules
+	'use strict';
+	var strictUriEncode = __webpack_require__(207);
 
-	var Stringify = __webpack_require__(202);
-	var Parse = __webpack_require__(204);
+	exports.extract = function (str) {
+		return str.split('?')[1] || '';
+	};
 
+	exports.parse = function (str) {
+		if (typeof str !== 'string') {
+			return {};
+		}
 
-	// Declare internals
+		str = str.trim().replace(/^(\?|#|&)/, '');
 
-	var internals = {};
+		if (!str) {
+			return {};
+		}
 
+		return str.split('&').reduce(function (ret, param) {
+			var parts = param.replace(/\+/g, ' ').split('=');
+			// Firefox (pre 40) decodes `%3D` to `=`
+			// https://github.com/sindresorhus/query-string/pull/37
+			var key = parts.shift();
+			var val = parts.length > 0 ? parts.join('=') : undefined;
 
-	module.exports = {
-	    stringify: Stringify,
-	    parse: Parse
+			key = decodeURIComponent(key);
+
+			// missing `=` should be `null`:
+			// http://w3.org/TR/2012/WD-url-20120524/#collect-url-parameters
+			val = val === undefined ? null : decodeURIComponent(val);
+
+			if (!ret.hasOwnProperty(key)) {
+				ret[key] = val;
+			} else if (Array.isArray(ret[key])) {
+				ret[key].push(val);
+			} else {
+				ret[key] = [ret[key], val];
+			}
+
+			return ret;
+		}, {});
+	};
+
+	exports.stringify = function (obj) {
+		return obj ? Object.keys(obj).sort().map(function (key) {
+			var val = obj[key];
+
+			if (val === undefined) {
+				return '';
+			}
+
+			if (val === null) {
+				return key;
+			}
+
+			if (Array.isArray(val)) {
+				return val.slice().sort().map(function (val2) {
+					return strictUriEncode(key) + '=' + strictUriEncode(val2);
+				}).join('&');
+			}
+
+			return strictUriEncode(key) + '=' + strictUriEncode(val);
+		}).filter(function (x) {
+			return x.length > 0;
+		}).join('&') : '';
 	};
 
 
 /***/ },
-/* 202 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Load modules
-
-	var Utils = __webpack_require__(203);
-
-
-	// Declare internals
-
-	var internals = {
-	    delimiter: '&',
-	    arrayPrefixGenerators: {
-	        brackets: function (prefix, key) {
-
-	            return prefix + '[]';
-	        },
-	        indices: function (prefix, key) {
-
-	            return prefix + '[' + key + ']';
-	        },
-	        repeat: function (prefix, key) {
-
-	            return prefix;
-	        }
-	    },
-	    strictNullHandling: false
-	};
-
-
-	internals.stringify = function (obj, prefix, generateArrayPrefix, strictNullHandling, filter) {
-
-	    if (typeof filter === 'function') {
-	        obj = filter(prefix, obj);
-	    }
-	    else if (Utils.isBuffer(obj)) {
-	        obj = obj.toString();
-	    }
-	    else if (obj instanceof Date) {
-	        obj = obj.toISOString();
-	    }
-	    else if (obj === null) {
-	        if (strictNullHandling) {
-	            return Utils.encode(prefix);
-	        }
-
-	        obj = '';
-	    }
-
-	    if (typeof obj === 'string' ||
-	        typeof obj === 'number' ||
-	        typeof obj === 'boolean') {
-
-	        return [Utils.encode(prefix) + '=' + Utils.encode(obj)];
-	    }
-
-	    var values = [];
-
-	    if (typeof obj === 'undefined') {
-	        return values;
-	    }
-
-	    var objKeys = Array.isArray(filter) ? filter : Object.keys(obj);
-	    for (var i = 0, il = objKeys.length; i < il; ++i) {
-	        var key = objKeys[i];
-
-	        if (Array.isArray(obj)) {
-	            values = values.concat(internals.stringify(obj[key], generateArrayPrefix(prefix, key), generateArrayPrefix, strictNullHandling, filter));
-	        }
-	        else {
-	            values = values.concat(internals.stringify(obj[key], prefix + '[' + key + ']', generateArrayPrefix, strictNullHandling, filter));
-	        }
-	    }
-
-	    return values;
-	};
-
-
-	module.exports = function (obj, options) {
-
-	    options = options || {};
-	    var delimiter = typeof options.delimiter === 'undefined' ? internals.delimiter : options.delimiter;
-	    var strictNullHandling = typeof options.strictNullHandling === 'boolean' ? options.strictNullHandling : internals.strictNullHandling;
-	    var objKeys;
-	    var filter;
-	    if (typeof options.filter === 'function') {
-	        filter = options.filter;
-	        obj = filter('', obj);
-	    }
-	    else if (Array.isArray(options.filter)) {
-	        objKeys = filter = options.filter;
-	    }
-
-	    var keys = [];
-
-	    if (typeof obj !== 'object' ||
-	        obj === null) {
-
-	        return '';
-	    }
-
-	    var arrayFormat;
-	    if (options.arrayFormat in internals.arrayPrefixGenerators) {
-	        arrayFormat = options.arrayFormat;
-	    }
-	    else if ('indices' in options) {
-	        arrayFormat = options.indices ? 'indices' : 'repeat';
-	    }
-	    else {
-	        arrayFormat = 'indices';
-	    }
-
-	    var generateArrayPrefix = internals.arrayPrefixGenerators[arrayFormat];
-
-	    if (!objKeys) {
-	        objKeys = Object.keys(obj);
-	    }
-	    for (var i = 0, il = objKeys.length; i < il; ++i) {
-	        var key = objKeys[i];
-	        keys = keys.concat(internals.stringify(obj[key], key, generateArrayPrefix, strictNullHandling, filter));
-	    }
-
-	    return keys.join(delimiter);
-	};
-
-
-/***/ },
-/* 203 */
+/* 207 */
 /***/ function(module, exports) {
 
-	// Load modules
-
-
-	// Declare internals
-
-	var internals = {};
-	internals.hexTable = new Array(256);
-	for (var h = 0; h < 256; ++h) {
-	    internals.hexTable[h] = '%' + ((h < 16 ? '0' : '') + h.toString(16)).toUpperCase();
-	}
-
-
-	exports.arrayToObject = function (source, options) {
-
-	    var obj = options.plainObjects ? Object.create(null) : {};
-	    for (var i = 0, il = source.length; i < il; ++i) {
-	        if (typeof source[i] !== 'undefined') {
-
-	            obj[i] = source[i];
-	        }
-	    }
-
-	    return obj;
-	};
-
-
-	exports.merge = function (target, source, options) {
-
-	    if (!source) {
-	        return target;
-	    }
-
-	    if (typeof source !== 'object') {
-	        if (Array.isArray(target)) {
-	            target.push(source);
-	        }
-	        else if (typeof target === 'object') {
-	            target[source] = true;
-	        }
-	        else {
-	            target = [target, source];
-	        }
-
-	        return target;
-	    }
-
-	    if (typeof target !== 'object') {
-	        target = [target].concat(source);
-	        return target;
-	    }
-
-	    if (Array.isArray(target) &&
-	        !Array.isArray(source)) {
-
-	        target = exports.arrayToObject(target, options);
-	    }
-
-	    var keys = Object.keys(source);
-	    for (var k = 0, kl = keys.length; k < kl; ++k) {
-	        var key = keys[k];
-	        var value = source[key];
-
-	        if (!Object.prototype.hasOwnProperty.call(target, key)) {
-	            target[key] = value;
-	        }
-	        else {
-	            target[key] = exports.merge(target[key], value, options);
-	        }
-	    }
-
-	    return target;
-	};
-
-
-	exports.decode = function (str) {
-
-	    try {
-	        return decodeURIComponent(str.replace(/\+/g, ' '));
-	    } catch (e) {
-	        return str;
-	    }
-	};
-
-	exports.encode = function (str) {
-
-	    // This code was originally written by Brian White (mscdex) for the io.js core querystring library.
-	    // It has been adapted here for stricter adherence to RFC 3986
-	    if (str.length === 0) {
-	        return str;
-	    }
-
-	    if (typeof str !== 'string') {
-	        str = '' + str;
-	    }
-
-	    var out = '';
-	    for (var i = 0, il = str.length; i < il; ++i) {
-	        var c = str.charCodeAt(i);
-
-	        if (c === 0x2D || // -
-	            c === 0x2E || // .
-	            c === 0x5F || // _
-	            c === 0x7E || // ~
-	            (c >= 0x30 && c <= 0x39) || // 0-9
-	            (c >= 0x41 && c <= 0x5A) || // a-z
-	            (c >= 0x61 && c <= 0x7A)) { // A-Z
-
-	            out += str[i];
-	            continue;
-	        }
-
-	        if (c < 0x80) {
-	            out += internals.hexTable[c];
-	            continue;
-	        }
-
-	        if (c < 0x800) {
-	            out += internals.hexTable[0xC0 | (c >> 6)] + internals.hexTable[0x80 | (c & 0x3F)];
-	            continue;
-	        }
-
-	        if (c < 0xD800 || c >= 0xE000) {
-	            out += internals.hexTable[0xE0 | (c >> 12)] + internals.hexTable[0x80 | ((c >> 6) & 0x3F)] + internals.hexTable[0x80 | (c & 0x3F)];
-	            continue;
-	        }
-
-	        ++i;
-	        c = 0x10000 + (((c & 0x3FF) << 10) | (str.charCodeAt(i) & 0x3FF));
-	        out += internals.hexTable[0xF0 | (c >> 18)] + internals.hexTable[0x80 | ((c >> 12) & 0x3F)] + internals.hexTable[0x80 | ((c >> 6) & 0x3F)] + internals.hexTable[0x80 | (c & 0x3F)];
-	    }
-
-	    return out;
-	};
-
-	exports.compact = function (obj, refs) {
-
-	    if (typeof obj !== 'object' ||
-	        obj === null) {
-
-	        return obj;
-	    }
-
-	    refs = refs || [];
-	    var lookup = refs.indexOf(obj);
-	    if (lookup !== -1) {
-	        return refs[lookup];
-	    }
-
-	    refs.push(obj);
-
-	    if (Array.isArray(obj)) {
-	        var compacted = [];
-
-	        for (var i = 0, il = obj.length; i < il; ++i) {
-	            if (typeof obj[i] !== 'undefined') {
-	                compacted.push(obj[i]);
-	            }
-	        }
-
-	        return compacted;
-	    }
-
-	    var keys = Object.keys(obj);
-	    for (i = 0, il = keys.length; i < il; ++i) {
-	        var key = keys[i];
-	        obj[key] = exports.compact(obj[key], refs);
-	    }
-
-	    return obj;
-	};
-
-
-	exports.isRegExp = function (obj) {
-
-	    return Object.prototype.toString.call(obj) === '[object RegExp]';
-	};
-
-
-	exports.isBuffer = function (obj) {
-
-	    if (obj === null ||
-	        typeof obj === 'undefined') {
-
-	        return false;
-	    }
-
-	    return !!(obj.constructor &&
-	              obj.constructor.isBuffer &&
-	              obj.constructor.isBuffer(obj));
+	'use strict';
+	module.exports = function (str) {
+		return encodeURIComponent(str).replace(/[!'()*]/g, function (c) {
+			return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+		});
 	};
 
 
 /***/ },
-/* 204 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Load modules
-
-	var Utils = __webpack_require__(203);
-
-
-	// Declare internals
-
-	var internals = {
-	    delimiter: '&',
-	    depth: 5,
-	    arrayLimit: 20,
-	    parameterLimit: 1000,
-	    strictNullHandling: false,
-	    plainObjects: false,
-	    allowPrototypes: false
-	};
-
-
-	internals.parseValues = function (str, options) {
-
-	    var obj = {};
-	    var parts = str.split(options.delimiter, options.parameterLimit === Infinity ? undefined : options.parameterLimit);
-
-	    for (var i = 0, il = parts.length; i < il; ++i) {
-	        var part = parts[i];
-	        var pos = part.indexOf(']=') === -1 ? part.indexOf('=') : part.indexOf(']=') + 1;
-
-	        if (pos === -1) {
-	            obj[Utils.decode(part)] = '';
-
-	            if (options.strictNullHandling) {
-	                obj[Utils.decode(part)] = null;
-	            }
-	        }
-	        else {
-	            var key = Utils.decode(part.slice(0, pos));
-	            var val = Utils.decode(part.slice(pos + 1));
-
-	            if (!Object.prototype.hasOwnProperty.call(obj, key)) {
-	                obj[key] = val;
-	            }
-	            else {
-	                obj[key] = [].concat(obj[key]).concat(val);
-	            }
-	        }
-	    }
-
-	    return obj;
-	};
-
-
-	internals.parseObject = function (chain, val, options) {
-
-	    if (!chain.length) {
-	        return val;
-	    }
-
-	    var root = chain.shift();
-
-	    var obj;
-	    if (root === '[]') {
-	        obj = [];
-	        obj = obj.concat(internals.parseObject(chain, val, options));
-	    }
-	    else {
-	        obj = options.plainObjects ? Object.create(null) : {};
-	        var cleanRoot = root[0] === '[' && root[root.length - 1] === ']' ? root.slice(1, root.length - 1) : root;
-	        var index = parseInt(cleanRoot, 10);
-	        var indexString = '' + index;
-	        if (!isNaN(index) &&
-	            root !== cleanRoot &&
-	            indexString === cleanRoot &&
-	            index >= 0 &&
-	            (options.parseArrays &&
-	             index <= options.arrayLimit)) {
-
-	            obj = [];
-	            obj[index] = internals.parseObject(chain, val, options);
-	        }
-	        else {
-	            obj[cleanRoot] = internals.parseObject(chain, val, options);
-	        }
-	    }
-
-	    return obj;
-	};
-
-
-	internals.parseKeys = function (key, val, options) {
-
-	    if (!key) {
-	        return;
-	    }
-
-	    // Transform dot notation to bracket notation
-
-	    if (options.allowDots) {
-	        key = key.replace(/\.([^\.\[]+)/g, '[$1]');
-	    }
-
-	    // The regex chunks
-
-	    var parent = /^([^\[\]]*)/;
-	    var child = /(\[[^\[\]]*\])/g;
-
-	    // Get the parent
-
-	    var segment = parent.exec(key);
-
-	    // Stash the parent if it exists
-
-	    var keys = [];
-	    if (segment[1]) {
-	        // If we aren't using plain objects, optionally prefix keys
-	        // that would overwrite object prototype properties
-	        if (!options.plainObjects &&
-	            Object.prototype.hasOwnProperty(segment[1])) {
-
-	            if (!options.allowPrototypes) {
-	                return;
-	            }
-	        }
-
-	        keys.push(segment[1]);
-	    }
-
-	    // Loop through children appending to the array until we hit depth
-
-	    var i = 0;
-	    while ((segment = child.exec(key)) !== null && i < options.depth) {
-
-	        ++i;
-	        if (!options.plainObjects &&
-	            Object.prototype.hasOwnProperty(segment[1].replace(/\[|\]/g, ''))) {
-
-	            if (!options.allowPrototypes) {
-	                continue;
-	            }
-	        }
-	        keys.push(segment[1]);
-	    }
-
-	    // If there's a remainder, just add whatever is left
-
-	    if (segment) {
-	        keys.push('[' + key.slice(segment.index) + ']');
-	    }
-
-	    return internals.parseObject(keys, val, options);
-	};
-
-
-	module.exports = function (str, options) {
-
-	    options = options || {};
-	    options.delimiter = typeof options.delimiter === 'string' || Utils.isRegExp(options.delimiter) ? options.delimiter : internals.delimiter;
-	    options.depth = typeof options.depth === 'number' ? options.depth : internals.depth;
-	    options.arrayLimit = typeof options.arrayLimit === 'number' ? options.arrayLimit : internals.arrayLimit;
-	    options.parseArrays = options.parseArrays !== false;
-	    options.allowDots = options.allowDots !== false;
-	    options.plainObjects = typeof options.plainObjects === 'boolean' ? options.plainObjects : internals.plainObjects;
-	    options.allowPrototypes = typeof options.allowPrototypes === 'boolean' ? options.allowPrototypes : internals.allowPrototypes;
-	    options.parameterLimit = typeof options.parameterLimit === 'number' ? options.parameterLimit : internals.parameterLimit;
-	    options.strictNullHandling = typeof options.strictNullHandling === 'boolean' ? options.strictNullHandling : internals.strictNullHandling;
-
-	    if (str === '' ||
-	        str === null ||
-	        typeof str === 'undefined') {
-
-	        return options.plainObjects ? Object.create(null) : {};
-	    }
-
-	    var tempObj = typeof str === 'string' ? internals.parseValues(str, options) : str;
-	    var obj = options.plainObjects ? Object.create(null) : {};
-
-	    // Iterate over the keys and setup the new object
-
-	    var keys = Object.keys(tempObj);
-	    for (var i = 0, il = keys.length; i < il; ++i) {
-	        var key = keys[i];
-	        var newObj = internals.parseKeys(key, tempObj[key], options);
-	        obj = Utils.merge(obj, newObj, options);
-	    }
-
-	    return Utils.compact(obj);
-	};
-
-
-/***/ },
-/* 205 */
+/* 208 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
 	exports.__esModule = true;
 
-	var _PatternUtils = __webpack_require__(198);
+	var _PatternUtils = __webpack_require__(203);
 
 	function routeParamsChanged(route, prevState, nextState) {
 	  if (!route.path) return false;
@@ -25790,17 +25965,11 @@
 	  });
 	}
 
-	function routeQueryChanged(prevState, nextState) {
-	  return prevState.location.search !== nextState.location.search;
-	}
-
 	/**
 	 * Returns an object of { leaveRoutes, enterRoutes } determined by
 	 * the change from prevState to nextState. We leave routes if either
 	 * 1) they are not in the next state or 2) they are in the next state
-	 * but their params have changed (i.e. /users/123 => /users/456) or
-	 * 3) they are in the next state but the query has changed 
-	 * (i.e. /search?query=foo => /search?query=bar)
+	 * but their params have changed (i.e. /users/123 => /users/456).
 	 *
 	 * leaveRoutes are ordered starting at the leaf route of the tree
 	 * we're leaving up to the common parent route. enterRoutes are ordered
@@ -25814,7 +25983,7 @@
 	      enterRoutes = undefined;
 	  if (prevRoutes) {
 	    leaveRoutes = prevRoutes.filter(function (route) {
-	      return nextRoutes.indexOf(route) === -1 || routeParamsChanged(route, prevState, nextState) || routeQueryChanged(prevState, nextState);
+	      return nextRoutes.indexOf(route) === -1 || routeParamsChanged(route, prevState, nextState);
 	    });
 
 	    // onLeave hooks start at the leaf route.
@@ -25838,7 +26007,7 @@
 	module.exports = exports['default'];
 
 /***/ },
-/* 206 */
+/* 209 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -25847,7 +26016,7 @@
 	exports.runEnterHooks = runEnterHooks;
 	exports.runLeaveHooks = runLeaveHooks;
 
-	var _AsyncUtils = __webpack_require__(207);
+	var _AsyncUtils = __webpack_require__(210);
 
 	function createEnterHook(hook, route) {
 	  return function (a, b, callback) {
@@ -25915,7 +26084,7 @@
 	}
 
 /***/ },
-/* 207 */
+/* 210 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -25978,14 +26147,14 @@
 	}
 
 /***/ },
-/* 208 */
+/* 211 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
 	exports.__esModule = true;
 
-	var _PatternUtils = __webpack_require__(198);
+	var _PatternUtils = __webpack_require__(203);
 
 	function deepEqual(a, b) {
 	  if (a == b) return true;
@@ -26000,38 +26169,57 @@
 
 	  if (typeof a === 'object') {
 	    for (var p in a) {
-	      if (a.hasOwnProperty(p) && (!b.hasOwnProperty(p) || !deepEqual(a[p], b[p]))) return false;
-	    }return true;
+	      if (!a.hasOwnProperty(p)) {
+	        continue;
+	      }
+
+	      if (a[p] === undefined) {
+	        if (b[p] !== undefined) {
+	          return false;
+	        }
+	      } else if (!b.hasOwnProperty(p)) {
+	        return false;
+	      } else if (!deepEqual(a[p], b[p])) {
+	        return false;
+	      }
+	    }
+
+	    return true;
 	  }
 
 	  return String(a) === String(b);
 	}
 
 	function paramsAreActive(paramNames, paramValues, activeParams) {
+	  // FIXME: This doesn't work on repeated params in activeParams.
 	  return paramNames.every(function (paramName, index) {
 	    return String(paramValues[index]) === String(activeParams[paramName]);
 	  });
 	}
 
-	function getMatchingRoute(pathname, activeRoutes, activeParams) {
-	  var route = undefined,
-	      pattern = undefined,
-	      basename = '';
+	function getMatchingRouteIndex(pathname, activeRoutes, activeParams) {
+	  var remainingPathname = pathname,
+	      paramNames = [],
+	      paramValues = [];
+
 	  for (var i = 0, len = activeRoutes.length; i < len; ++i) {
-	    route = activeRoutes[i];
-	    pattern = route.path || '';
+	    var route = activeRoutes[i];
+	    var pattern = route.path || '';
 
-	    if (pattern.charAt(0) !== '/') pattern = basename.replace(/\/*$/, '/') + pattern; // Relative paths build on the parent's path.
+	    if (pattern.charAt(0) === '/') {
+	      remainingPathname = pathname;
+	      paramNames = [];
+	      paramValues = [];
+	    }
 
-	    var _matchPattern = _PatternUtils.matchPattern(pattern, pathname);
+	    if (remainingPathname !== null) {
+	      var matched = _PatternUtils.matchPattern(pattern, remainingPathname);
+	      remainingPathname = matched.remainingPathname;
+	      paramNames = [].concat(paramNames, matched.paramNames);
+	      paramValues = [].concat(paramValues, matched.paramValues);
+	    }
 
-	    var remainingPathname = _matchPattern.remainingPathname;
-	    var paramNames = _matchPattern.paramNames;
-	    var paramValues = _matchPattern.paramValues;
-
-	    if (remainingPathname === '' && paramsAreActive(paramNames, paramValues, activeParams)) return route;
-
-	    basename = pattern;
+	    if (remainingPathname === '' && route.path && paramsAreActive(paramNames, paramValues, activeParams)) return i;
 	  }
 
 	  return null;
@@ -26041,14 +26229,22 @@
 	 * Returns true if the given pathname matches the active routes
 	 * and params.
 	 */
-	function routeIsActive(pathname, activeRoutes, activeParams, indexOnly) {
-	  var route = getMatchingRoute(pathname, activeRoutes, activeParams);
+	function routeIsActive(pathname, routes, params, indexOnly) {
+	  var i = getMatchingRouteIndex(pathname, routes, params);
 
-	  if (route == null) return false;
+	  if (i === null) {
+	    // No match.
+	    return false;
+	  } else if (!indexOnly) {
+	    // Any match is good enough.
+	    return true;
+	  }
 
-	  if (indexOnly) return activeRoutes.length > 1 && activeRoutes[activeRoutes.length - 1] === route.indexRoute;
-
-	  return true;
+	  // If any remaining routes past the match index have paths, then we can't
+	  // be on the index route.
+	  return routes.slice(i + 1).every(function (route) {
+	    return !route.path;
+	  });
 	}
 
 	/**
@@ -26079,14 +26275,14 @@
 	module.exports = exports['default'];
 
 /***/ },
-/* 209 */
+/* 212 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
 	exports.__esModule = true;
 
-	var _AsyncUtils = __webpack_require__(207);
+	var _AsyncUtils = __webpack_require__(210);
 
 	function getComponentsForRoute(location, route, callback) {
 	  if (route.component || route.components) {
@@ -26117,18 +26313,24 @@
 	module.exports = exports['default'];
 
 /***/ },
-/* 210 */
+/* 213 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
-	var _AsyncUtils = __webpack_require__(207);
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-	var _PatternUtils = __webpack_require__(198);
+	var _warning = __webpack_require__(180);
 
-	var _RouteUtils = __webpack_require__(195);
+	var _warning2 = _interopRequireDefault(_warning);
+
+	var _AsyncUtils = __webpack_require__(210);
+
+	var _PatternUtils = __webpack_require__(203);
+
+	var _RouteUtils = __webpack_require__(199);
 
 	function getChildRoutes(route, location, callback) {
 	  if (route.childRoutes) {
@@ -26149,19 +26351,38 @@
 	    route.getIndexRoute(location, function (error, indexRoute) {
 	      callback(error, !error && _RouteUtils.createRoutes(indexRoute)[0]);
 	    });
+	  } else if (route.childRoutes) {
+	    (function () {
+	      var pathless = route.childRoutes.filter(function (obj) {
+	        return !obj.hasOwnProperty('path');
+	      });
+
+	      _AsyncUtils.loopAsync(pathless.length, function (index, next, done) {
+	        getIndexRoute(pathless[index], location, function (error, indexRoute) {
+	          if (error || indexRoute) {
+	            var routes = [pathless[index]].concat(Array.isArray(indexRoute) ? indexRoute : [indexRoute]);
+	            done(error, routes);
+	          } else {
+	            next();
+	          }
+	        });
+	      }, function (err, routes) {
+	        callback(null, routes);
+	      });
+	    })();
 	  } else {
 	    callback();
 	  }
 	}
 
 	function assignParams(params, paramNames, paramValues) {
-	  return paramNames.reduceRight(function (params, paramName, index) {
+	  return paramNames.reduce(function (params, paramName, index) {
 	    var paramValue = paramValues && paramValues[index];
 
 	    if (Array.isArray(params[paramName])) {
-	      params[paramName].unshift(paramValue);
+	      params[paramName].push(paramValue);
 	    } else if (paramName in params) {
-	      params[paramName] = [paramValue, params[paramName]];
+	      params[paramName] = [params[paramName], paramValue];
 	    } else {
 	      params[paramName] = paramValue;
 	    }
@@ -26174,37 +26395,57 @@
 	  return assignParams({}, paramNames, paramValues);
 	}
 
-	function matchRouteDeep(basename, route, location, callback) {
+	function matchRouteDeep(route, location, remainingPathname, paramNames, paramValues, callback) {
 	  var pattern = route.path || '';
 
-	  if (pattern.charAt(0) !== '/') pattern = basename.replace(/\/*$/, '/') + pattern; // Relative paths build on the parent's path.
+	  if (pattern.charAt(0) === '/') {
+	    remainingPathname = location.pathname;
+	    paramNames = [];
+	    paramValues = [];
+	  }
 
-	  var _matchPattern = _PatternUtils.matchPattern(pattern, location.pathname);
+	  if (remainingPathname !== null) {
+	    var matched = _PatternUtils.matchPattern(pattern, remainingPathname);
+	    remainingPathname = matched.remainingPathname;
+	    paramNames = [].concat(paramNames, matched.paramNames);
+	    paramValues = [].concat(paramValues, matched.paramValues);
 
-	  var remainingPathname = _matchPattern.remainingPathname;
-	  var paramNames = _matchPattern.paramNames;
-	  var paramValues = _matchPattern.paramValues;
+	    if (remainingPathname === '' && route.path) {
+	      var _ret2 = (function () {
+	        var match = {
+	          routes: [route],
+	          params: createParams(paramNames, paramValues)
+	        };
 
-	  var isExactMatch = remainingPathname === '';
+	        getIndexRoute(route, location, function (error, indexRoute) {
+	          if (error) {
+	            callback(error);
+	          } else {
+	            if (Array.isArray(indexRoute)) {
+	              var _match$routes;
 
-	  if (isExactMatch && route.path) {
-	    (function () {
-	      var match = {
-	        routes: [route],
-	        params: createParams(paramNames, paramValues)
-	      };
+	              process.env.NODE_ENV !== 'production' ? _warning2['default'](indexRoute.every(function (route) {
+	                return !route.path;
+	              }), 'Index routes should not have paths') : undefined;
+	              (_match$routes = match.routes).push.apply(_match$routes, indexRoute);
+	            } else if (indexRoute) {
+	              process.env.NODE_ENV !== 'production' ? _warning2['default'](!indexRoute.path, 'Index routes should not have paths') : undefined;
+	              match.routes.push(indexRoute);
+	            }
 
-	      getIndexRoute(route, location, function (error, indexRoute) {
-	        if (error) {
-	          callback(error);
-	        } else {
-	          if (indexRoute) match.routes.push(indexRoute);
+	            callback(null, match);
+	          }
+	        });
+	        return {
+	          v: undefined
+	        };
+	      })();
 
-	          callback(null, match);
-	        }
-	      });
-	    })();
-	  } else if (remainingPathname != null || route.childRoutes) {
+	      if (typeof _ret2 === 'object') return _ret2.v;
+	    }
+	  }
+
+	  if (remainingPathname != null || route.childRoutes) {
 	    // Either a) this route matched at least some of the path or b)
 	    // we don't have to load this route's children asynchronously. In
 	    // either case continue checking for matches in the subtree.
@@ -26223,7 +26464,7 @@
 	          } else {
 	            callback();
 	          }
-	        }, pattern);
+	        }, remainingPathname, paramNames, paramValues);
 	      } else {
 	        callback();
 	      }
@@ -26245,24 +26486,28 @@
 	 * asynchronous getChildRoutes method.
 	 */
 	function matchRoutes(routes, location, callback) {
-	  var basename = arguments.length <= 3 || arguments[3] === undefined ? '' : arguments[3];
-
-	  _AsyncUtils.loopAsync(routes.length, function (index, next, done) {
-	    matchRouteDeep(basename, routes[index], location, function (error, match) {
-	      if (error || match) {
-	        done(error, match);
-	      } else {
-	        next();
-	      }
-	    });
-	  }, callback);
+	  var remainingPathname = arguments.length <= 3 || arguments[3] === undefined ? location.pathname : arguments[3];
+	  var paramNames = arguments.length <= 4 || arguments[4] === undefined ? [] : arguments[4];
+	  var paramValues = arguments.length <= 5 || arguments[5] === undefined ? [] : arguments[5];
+	  return (function () {
+	    _AsyncUtils.loopAsync(routes.length, function (index, next, done) {
+	      matchRouteDeep(routes[index], location, remainingPathname, paramNames, paramValues, function (error, match) {
+	        if (error || match) {
+	          done(error, match);
+	        } else {
+	          next();
+	        }
+	      });
+	    }, callback);
+	  })();
 	}
 
 	exports['default'] = matchRoutes;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 211 */
+/* 214 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -26320,7 +26565,7 @@
 	};
 
 /***/ },
-/* 212 */
+/* 215 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -26328,8 +26573,6 @@
 	exports.__esModule = true;
 
 	var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -26382,43 +26625,60 @@
 	 *   <Link ... query={{ show: true }} state={{ the: 'state' }} />
 	 */
 
-	var Link = (function (_React$Component) {
-	  _inherits(Link, _React$Component);
+	var Link = (function (_Component) {
+	  _inherits(Link, _Component);
 
 	  function Link() {
 	    _classCallCheck(this, Link);
 
-	    _React$Component.apply(this, arguments);
+	    _Component.apply(this, arguments);
 	  }
 
 	  Link.prototype.handleClick = function handleClick(event) {
-	    var allowTransition = true,
-	        clickResult = undefined;
+	    var allowTransition = true;
 
-	    if (this.props.onClick) clickResult = this.props.onClick(event);
+	    if (this.props.onClick) this.props.onClick(event);
 
 	    if (isModifiedEvent(event) || !isLeftClickEvent(event)) return;
 
-	    if (clickResult === false || event.defaultPrevented === true) allowTransition = false;
+	    if (event.defaultPrevented === true) allowTransition = false;
+
+	    // If target prop is set (e.g. to "_blank") let browser handle link.
+	    /* istanbul ignore if: untestable with Karma */
+	    if (this.props.target) {
+	      if (!allowTransition) event.preventDefault();
+
+	      return;
+	    }
 
 	    event.preventDefault();
 
-	    if (allowTransition) this.context.history.pushState(this.props.state, this.props.to, this.props.query);
+	    if (allowTransition) {
+	      var _props = this.props;
+	      var state = _props.state;
+	      var to = _props.to;
+	      var query = _props.query;
+	      var hash = _props.hash;
+
+	      if (hash) to += hash;
+
+	      this.context.history.pushState(state, to, query);
+	    }
 	  };
 
 	  Link.prototype.render = function render() {
 	    var _this = this;
 
-	    var _props = this.props;
-	    var to = _props.to;
-	    var query = _props.query;
-	    var hash = _props.hash;
-	    var state = _props.state;
-	    var activeClassName = _props.activeClassName;
-	    var activeStyle = _props.activeStyle;
-	    var onlyActiveOnIndex = _props.onlyActiveOnIndex;
+	    var _props2 = this.props;
+	    var to = _props2.to;
+	    var query = _props2.query;
+	    var hash = _props2.hash;
+	    var state = _props2.state;
+	    var activeClassName = _props2.activeClassName;
+	    var activeStyle = _props2.activeStyle;
+	    var onlyActiveOnIndex = _props2.onlyActiveOnIndex;
 
-	    var props = _objectWithoutProperties(_props, ['to', 'query', 'hash', 'state', 'activeClassName', 'activeStyle', 'onlyActiveOnIndex']);
+	    var props = _objectWithoutProperties(_props2, ['to', 'query', 'hash', 'state', 'activeClassName', 'activeStyle', 'onlyActiveOnIndex']);
 
 	    // Manually override onClick.
 	    props.onClick = function (e) {
@@ -26445,43 +26705,35 @@
 	    return _react2['default'].createElement('a', props);
 	  };
 
-	  _createClass(Link, null, [{
-	    key: 'contextTypes',
-	    value: {
-	      history: object
-	    },
-	    enumerable: true
-	  }, {
-	    key: 'propTypes',
-	    value: {
-	      to: string.isRequired,
-	      query: object,
-	      hash: string,
-	      state: object,
-	      activeStyle: object,
-	      activeClassName: string,
-	      onlyActiveOnIndex: bool.isRequired,
-	      onClick: func
-	    },
-	    enumerable: true
-	  }, {
-	    key: 'defaultProps',
-	    value: {
-	      onlyActiveOnIndex: false,
-	      className: '',
-	      style: {}
-	    },
-	    enumerable: true
-	  }]);
-
 	  return Link;
-	})(_react2['default'].Component);
+	})(_react.Component);
+
+	Link.contextTypes = {
+	  history: object
+	};
+
+	Link.propTypes = {
+	  to: string.isRequired,
+	  query: object,
+	  hash: string,
+	  state: object,
+	  activeStyle: object,
+	  activeClassName: string,
+	  onlyActiveOnIndex: bool.isRequired,
+	  onClick: func
+	};
+
+	Link.defaultProps = {
+	  onlyActiveOnIndex: false,
+	  className: '',
+	  style: {}
+	};
 
 	exports['default'] = Link;
 	module.exports = exports['default'];
 
 /***/ },
-/* 213 */
+/* 216 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -26500,7 +26752,7 @@
 
 	var _react2 = _interopRequireDefault(_react);
 
-	var _Link = __webpack_require__(212);
+	var _Link = __webpack_require__(215);
 
 	var _Link2 = _interopRequireDefault(_Link);
 
@@ -26508,13 +26760,13 @@
 	 * An <IndexLink> is used to link to an <IndexRoute>.
 	 */
 
-	var IndexLink = (function (_React$Component) {
-	  _inherits(IndexLink, _React$Component);
+	var IndexLink = (function (_Component) {
+	  _inherits(IndexLink, _Component);
 
 	  function IndexLink() {
 	    _classCallCheck(this, IndexLink);
 
-	    _React$Component.apply(this, arguments);
+	    _Component.apply(this, arguments);
 	  }
 
 	  IndexLink.prototype.render = function render() {
@@ -26522,20 +26774,18 @@
 	  };
 
 	  return IndexLink;
-	})(_react2['default'].Component);
+	})(_react.Component);
 
 	exports['default'] = IndexLink;
 	module.exports = exports['default'];
 
 /***/ },
-/* 214 */
+/* 217 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
-
-	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -26543,23 +26793,23 @@
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _react = __webpack_require__(1);
-
-	var _react2 = _interopRequireDefault(_react);
-
-	var _invariant = __webpack_require__(182);
-
-	var _invariant2 = _interopRequireDefault(_invariant);
-
 	var _warning = __webpack_require__(180);
 
 	var _warning2 = _interopRequireDefault(_warning);
 
-	var _Redirect = __webpack_require__(215);
+	var _invariant = __webpack_require__(201);
+
+	var _invariant2 = _interopRequireDefault(_invariant);
+
+	var _react = __webpack_require__(1);
+
+	var _react2 = _interopRequireDefault(_react);
+
+	var _Redirect = __webpack_require__(218);
 
 	var _Redirect2 = _interopRequireDefault(_Redirect);
 
-	var _PropTypes = __webpack_require__(211);
+	var _PropTypes = __webpack_require__(214);
 
 	var _React$PropTypes = _react2['default'].PropTypes;
 	var string = _React$PropTypes.string;
@@ -26569,54 +26819,52 @@
 	 * An <IndexRedirect> is used to redirect from an indexRoute.
 	 */
 
-	var IndexRedirect = (function (_React$Component) {
-	  _inherits(IndexRedirect, _React$Component);
+	var IndexRedirect = (function (_Component) {
+	  _inherits(IndexRedirect, _Component);
 
 	  function IndexRedirect() {
 	    _classCallCheck(this, IndexRedirect);
 
-	    _React$Component.apply(this, arguments);
+	    _Component.apply(this, arguments);
 	  }
 
-	  IndexRedirect.createRouteFromReactElement = function createRouteFromReactElement(element, parentRoute) {
-	    if (parentRoute) {
-	      parentRoute.indexRoute = _Redirect2['default'].createRouteFromReactElement(element);
-	    } else {
-	      _warning2['default'](false, 'An <IndexRedirect> does not make sense at the root of your route config');
-	    }
-	  };
+	  /* istanbul ignore next: sanity check */
 
 	  IndexRedirect.prototype.render = function render() {
-	    _invariant2['default'](false, '<IndexRedirect> elements are for router configuration only and should not be rendered');
+	     true ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, '<IndexRedirect> elements are for router configuration only and should not be rendered') : _invariant2['default'](false) : undefined;
 	  };
 
-	  _createClass(IndexRedirect, null, [{
-	    key: 'propTypes',
-	    value: {
-	      to: string.isRequired,
-	      query: object,
-	      state: object,
-	      onEnter: _PropTypes.falsy,
-	      children: _PropTypes.falsy
-	    },
-	    enumerable: true
-	  }]);
-
 	  return IndexRedirect;
-	})(_react2['default'].Component);
+	})(_react.Component);
+
+	IndexRedirect.propTypes = {
+	  to: string.isRequired,
+	  query: object,
+	  state: object,
+	  onEnter: _PropTypes.falsy,
+	  children: _PropTypes.falsy
+	};
+
+	IndexRedirect.createRouteFromReactElement = function (element, parentRoute) {
+	  /* istanbul ignore else: sanity check */
+	  if (parentRoute) {
+	    parentRoute.indexRoute = _Redirect2['default'].createRouteFromReactElement(element);
+	  } else {
+	    process.env.NODE_ENV !== 'production' ? _warning2['default'](false, 'An <IndexRedirect> does not make sense at the root of your route config') : undefined;
+	  }
+	};
 
 	exports['default'] = IndexRedirect;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 215 */
+/* 218 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
-
-	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -26624,19 +26872,19 @@
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+	var _invariant = __webpack_require__(201);
+
+	var _invariant2 = _interopRequireDefault(_invariant);
+
 	var _react = __webpack_require__(1);
 
 	var _react2 = _interopRequireDefault(_react);
 
-	var _invariant = __webpack_require__(182);
+	var _RouteUtils = __webpack_require__(199);
 
-	var _invariant2 = _interopRequireDefault(_invariant);
+	var _PatternUtils = __webpack_require__(203);
 
-	var _RouteUtils = __webpack_require__(195);
-
-	var _PatternUtils = __webpack_require__(198);
-
-	var _PropTypes = __webpack_require__(211);
+	var _PropTypes = __webpack_require__(214);
 
 	var _React$PropTypes = _react2['default'].PropTypes;
 	var string = _React$PropTypes.string;
@@ -26650,89 +26898,86 @@
 	 * and are traversed in the same manner.
 	 */
 
-	var Redirect = (function (_React$Component) {
-	  _inherits(Redirect, _React$Component);
+	var Redirect = (function (_Component) {
+	  _inherits(Redirect, _Component);
 
 	  function Redirect() {
 	    _classCallCheck(this, Redirect);
 
-	    _React$Component.apply(this, arguments);
+	    _Component.apply(this, arguments);
 	  }
 
-	  Redirect.createRouteFromReactElement = function createRouteFromReactElement(element) {
-	    var route = _RouteUtils.createRouteFromReactElement(element);
-
-	    if (route.from) route.path = route.from;
-
-	    route.onEnter = function (nextState, replaceState) {
-	      var location = nextState.location;
-	      var params = nextState.params;
-
-	      var pathname = undefined;
-	      if (route.to.charAt(0) === '/') {
-	        pathname = _PatternUtils.formatPattern(route.to, params);
-	      } else if (!route.to) {
-	        pathname = location.pathname;
-	      } else {
-	        var routeIndex = nextState.routes.indexOf(route);
-	        var parentPattern = Redirect.getRoutePattern(nextState.routes, routeIndex - 1);
-	        var pattern = parentPattern.replace(/\/*$/, '/') + route.to;
-	        pathname = _PatternUtils.formatPattern(pattern, params);
-	      }
-
-	      replaceState(route.state || location.state, pathname, route.query || location.query);
-	    };
-
-	    return route;
-	  };
-
-	  Redirect.getRoutePattern = function getRoutePattern(routes, routeIndex) {
-	    var parentPattern = '';
-
-	    for (var i = routeIndex; i >= 0; i--) {
-	      var route = routes[i];
-	      var pattern = route.path || '';
-	      parentPattern = pattern.replace(/\/*$/, '/') + parentPattern;
-
-	      if (pattern.indexOf('/') === 0) break;
-	    }
-
-	    return '/' + parentPattern;
-	  };
+	  /* istanbul ignore next: sanity check */
 
 	  Redirect.prototype.render = function render() {
-	    _invariant2['default'](false, '<Redirect> elements are for router configuration only and should not be rendered');
+	     true ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, '<Redirect> elements are for router configuration only and should not be rendered') : _invariant2['default'](false) : undefined;
 	  };
 
-	  _createClass(Redirect, null, [{
-	    key: 'propTypes',
-	    value: {
-	      path: string,
-	      from: string, // Alias for path
-	      to: string.isRequired,
-	      query: object,
-	      state: object,
-	      onEnter: _PropTypes.falsy,
-	      children: _PropTypes.falsy
-	    },
-	    enumerable: true
-	  }]);
-
 	  return Redirect;
-	})(_react2['default'].Component);
+	})(_react.Component);
+
+	Redirect.createRouteFromReactElement = function (element) {
+	  var route = _RouteUtils.createRouteFromReactElement(element);
+
+	  if (route.from) route.path = route.from;
+
+	  route.onEnter = function (nextState, replaceState) {
+	    var location = nextState.location;
+	    var params = nextState.params;
+
+	    var pathname = undefined;
+	    if (route.to.charAt(0) === '/') {
+	      pathname = _PatternUtils.formatPattern(route.to, params);
+	    } else if (!route.to) {
+	      pathname = location.pathname;
+	    } else {
+	      var routeIndex = nextState.routes.indexOf(route);
+	      var parentPattern = Redirect.getRoutePattern(nextState.routes, routeIndex - 1);
+	      var pattern = parentPattern.replace(/\/*$/, '/') + route.to;
+	      pathname = _PatternUtils.formatPattern(pattern, params);
+	    }
+
+	    replaceState(route.state || location.state, pathname, route.query || location.query);
+	  };
+
+	  return route;
+	};
+
+	Redirect.getRoutePattern = function (routes, routeIndex) {
+	  var parentPattern = '';
+
+	  for (var i = routeIndex; i >= 0; i--) {
+	    var route = routes[i];
+	    var pattern = route.path || '';
+	    parentPattern = pattern.replace(/\/*$/, '/') + parentPattern;
+
+	    if (pattern.indexOf('/') === 0) break;
+	  }
+
+	  return '/' + parentPattern;
+	};
+
+	Redirect.propTypes = {
+	  path: string,
+	  from: string, // Alias for path
+	  to: string.isRequired,
+	  query: object,
+	  state: object,
+	  onEnter: _PropTypes.falsy,
+	  children: _PropTypes.falsy
+	};
 
 	exports['default'] = Redirect;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 216 */
+/* 219 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
-
-	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -26740,79 +26985,75 @@
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var _react = __webpack_require__(1);
-
-	var _react2 = _interopRequireDefault(_react);
-
-	var _invariant = __webpack_require__(182);
-
-	var _invariant2 = _interopRequireDefault(_invariant);
-
 	var _warning = __webpack_require__(180);
 
 	var _warning2 = _interopRequireDefault(_warning);
 
-	var _RouteUtils = __webpack_require__(195);
+	var _invariant = __webpack_require__(201);
 
-	var _PropTypes = __webpack_require__(211);
+	var _invariant2 = _interopRequireDefault(_invariant);
 
-	var _React$PropTypes = _react2['default'].PropTypes;
-	var bool = _React$PropTypes.bool;
-	var func = _React$PropTypes.func;
+	var _react = __webpack_require__(1);
+
+	var _react2 = _interopRequireDefault(_react);
+
+	var _RouteUtils = __webpack_require__(199);
+
+	var _PropTypes = __webpack_require__(214);
+
+	var func = _react2['default'].PropTypes.func;
 
 	/**
 	 * An <IndexRoute> is used to specify its parent's <Route indexRoute> in
 	 * a JSX route config.
 	 */
 
-	var IndexRoute = (function (_React$Component) {
-	  _inherits(IndexRoute, _React$Component);
+	var IndexRoute = (function (_Component) {
+	  _inherits(IndexRoute, _Component);
 
 	  function IndexRoute() {
 	    _classCallCheck(this, IndexRoute);
 
-	    _React$Component.apply(this, arguments);
+	    _Component.apply(this, arguments);
 	  }
 
-	  IndexRoute.createRouteFromReactElement = function createRouteFromReactElement(element, parentRoute) {
-	    if (parentRoute) {
-	      parentRoute.indexRoute = _RouteUtils.createRouteFromReactElement(element);
-	    } else {
-	      _warning2['default'](false, 'An <IndexRoute> does not make sense at the root of your route config');
-	    }
-	  };
+	  /* istanbul ignore next: sanity check */
 
 	  IndexRoute.prototype.render = function render() {
-	    _invariant2['default'](false, '<IndexRoute> elements are for router configuration only and should not be rendered');
+	     true ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, '<IndexRoute> elements are for router configuration only and should not be rendered') : _invariant2['default'](false) : undefined;
 	  };
 
-	  _createClass(IndexRoute, null, [{
-	    key: 'propTypes',
-	    value: {
-	      path: _PropTypes.falsy,
-	      ignoreScrollBehavior: bool,
-	      component: _PropTypes.component,
-	      components: _PropTypes.components,
-	      getComponents: func
-	    },
-	    enumerable: true
-	  }]);
-
 	  return IndexRoute;
-	})(_react2['default'].Component);
+	})(_react.Component);
+
+	IndexRoute.propTypes = {
+	  path: _PropTypes.falsy,
+	  component: _PropTypes.component,
+	  components: _PropTypes.components,
+	  getComponent: func,
+	  getComponents: func
+	};
+
+	IndexRoute.createRouteFromReactElement = function (element, parentRoute) {
+	  /* istanbul ignore else: sanity check */
+	  if (parentRoute) {
+	    parentRoute.indexRoute = _RouteUtils.createRouteFromReactElement(element);
+	  } else {
+	    process.env.NODE_ENV !== 'production' ? _warning2['default'](false, 'An <IndexRoute> does not make sense at the root of your route config') : undefined;
+	  }
+	};
 
 	exports['default'] = IndexRoute;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 217 */
+/* 220 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
-
-	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -26820,25 +27061,20 @@
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+	var _invariant = __webpack_require__(201);
+
+	var _invariant2 = _interopRequireDefault(_invariant);
+
 	var _react = __webpack_require__(1);
 
 	var _react2 = _interopRequireDefault(_react);
 
-	var _warning = __webpack_require__(180);
+	var _RouteUtils = __webpack_require__(199);
 
-	var _warning2 = _interopRequireDefault(_warning);
-
-	var _invariant = __webpack_require__(182);
-
-	var _invariant2 = _interopRequireDefault(_invariant);
-
-	var _RouteUtils = __webpack_require__(195);
-
-	var _PropTypes = __webpack_require__(211);
+	var _PropTypes = __webpack_require__(214);
 
 	var _React$PropTypes = _react2['default'].PropTypes;
 	var string = _React$PropTypes.string;
-	var bool = _React$PropTypes.bool;
 	var func = _React$PropTypes.func;
 
 	/**
@@ -26852,64 +27088,56 @@
 	 * rendered into the DOM, nested in the same order as in the tree.
 	 */
 
-	var Route = (function (_React$Component) {
-	  _inherits(Route, _React$Component);
+	var Route = (function (_Component) {
+	  _inherits(Route, _Component);
 
 	  function Route() {
 	    _classCallCheck(this, Route);
 
-	    _React$Component.apply(this, arguments);
+	    _Component.apply(this, arguments);
 	  }
 
-	  Route.createRouteFromReactElement = function createRouteFromReactElement(element) {
-	    var route = _RouteUtils.createRouteFromReactElement(element);
-
-	    if (route.handler) {
-	      _warning2['default'](false, '<Route handler> is deprecated, use <Route component> instead');
-
-	      route.component = route.handler;
-	      delete route.handler;
-	    }
-
-	    return route;
-	  };
+	  /* istanbul ignore next: sanity check */
 
 	  Route.prototype.render = function render() {
-	    _invariant2['default'](false, '<Route> elements are for router configuration only and should not be rendered');
+	     true ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, '<Route> elements are for router configuration only and should not be rendered') : _invariant2['default'](false) : undefined;
 	  };
 
-	  _createClass(Route, null, [{
-	    key: 'propTypes',
-	    value: {
-	      path: string,
-	      ignoreScrollBehavior: bool,
-	      handler: // deprecated
-	      _PropTypes.component, component: _PropTypes.component,
-	      components: _PropTypes.components,
-	      getComponents: func
-	    },
-	    enumerable: true
-	  }]);
-
 	  return Route;
-	})(_react2['default'].Component);
+	})(_react.Component);
+
+	Route.createRouteFromReactElement = _RouteUtils.createRouteFromReactElement;
+
+	Route.propTypes = {
+	  path: string,
+	  component: _PropTypes.component,
+	  components: _PropTypes.components,
+	  getComponent: func,
+	  getComponents: func
+	};
 
 	exports['default'] = Route;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 218 */
+/* 221 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
 	exports.__esModule = true;
 
-	var _PropTypes = __webpack_require__(211);
+	var _PropTypes = __webpack_require__(214);
 
+	/**
+	 * A mixin that adds the "history" instance variable to components.
+	 */
 	var History = {
 
-	  contextTypes: { history: _PropTypes.history },
+	  contextTypes: {
+	    history: _PropTypes.history
+	  },
 
 	  componentWillMount: function componentWillMount() {
 	    this.history = this.context.history;
@@ -26921,10 +27149,10 @@
 	module.exports = exports['default'];
 
 /***/ },
-/* 219 */
+/* 222 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
@@ -26934,7 +27162,7 @@
 
 	var _react2 = _interopRequireDefault(_react);
 
-	var _invariant = __webpack_require__(182);
+	var _invariant = __webpack_require__(201);
 
 	var _invariant2 = _interopRequireDefault(_invariant);
 
@@ -26971,11 +27199,11 @@
 	  },
 
 	  componentDidMount: function componentDidMount() {
-	    _invariant2['default'](this.routerWillLeave, 'The Lifecycle mixin requires you to define a routerWillLeave method');
+	    !this.routerWillLeave ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, 'The Lifecycle mixin requires you to define a routerWillLeave method') : _invariant2['default'](false) : undefined;
 
 	    var route = this.props.route || this.context.route;
 
-	    _invariant2['default'](route, 'The Lifecycle mixin must be used on either a) a <Route component> or ' + 'b) a descendant of a <Route component> that uses the RouteContext mixin');
+	    !route ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, 'The Lifecycle mixin must be used on either a) a <Route component> or ' + 'b) a descendant of a <Route component> that uses the RouteContext mixin') : _invariant2['default'](false) : undefined;
 
 	    this._unlistenBeforeLeavingRoute = this.context.history.listenBeforeLeavingRoute(route, this.routerWillLeave);
 	  },
@@ -26988,9 +27216,10 @@
 
 	exports['default'] = Lifecycle;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 220 */
+/* 223 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -27033,10 +27262,10 @@
 	module.exports = exports['default'];
 
 /***/ },
-/* 221 */
+/* 224 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
@@ -27044,21 +27273,21 @@
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-	var _invariant = __webpack_require__(182);
+	var _invariant = __webpack_require__(201);
 
 	var _invariant2 = _interopRequireDefault(_invariant);
 
-	var _historyLibCreateMemoryHistory = __webpack_require__(222);
+	var _historyLibCreateMemoryHistory = __webpack_require__(225);
 
 	var _historyLibCreateMemoryHistory2 = _interopRequireDefault(_historyLibCreateMemoryHistory);
 
-	var _historyLibUseBasename = __webpack_require__(223);
+	var _historyLibUseBasename = __webpack_require__(226);
 
 	var _historyLibUseBasename2 = _interopRequireDefault(_historyLibUseBasename);
 
-	var _RouteUtils = __webpack_require__(195);
+	var _RouteUtils = __webpack_require__(199);
 
-	var _useRoutes = __webpack_require__(199);
+	var _useRoutes = __webpack_require__(204);
 
 	var _useRoutes2 = _interopRequireDefault(_useRoutes);
 
@@ -27080,7 +27309,7 @@
 	  var stringifyQuery = _ref.stringifyQuery;
 	  var basename = _ref.basename;
 
-	  _invariant2['default'](location, 'match needs a location');
+	  !location ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, 'match needs a location') : _invariant2['default'](false) : undefined;
 
 	  var history = createHistory({
 	    routes: _RouteUtils.createRoutes(routes),
@@ -27099,12 +27328,13 @@
 
 	exports['default'] = match;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 222 */
+/* 225 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	exports.__esModule = true;
 
@@ -27112,15 +27342,23 @@
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
-	var _invariant = __webpack_require__(182);
+	var _warning = __webpack_require__(182);
+
+	var _warning2 = _interopRequireDefault(_warning);
+
+	var _invariant = __webpack_require__(183);
 
 	var _invariant2 = _interopRequireDefault(_invariant);
 
-	var _Actions = __webpack_require__(183);
+	var _Actions = __webpack_require__(184);
 
-	var _createHistory = __webpack_require__(188);
+	var _createHistory = __webpack_require__(189);
 
 	var _createHistory2 = _interopRequireDefault(_createHistory);
+
+	var _parsePath = __webpack_require__(195);
+
+	var _parsePath2 = _interopRequireDefault(_parsePath);
 
 	function createStateStorage(entries) {
 	  return entries.filter(function (entry) {
@@ -27164,13 +27402,13 @@
 
 	    if (typeof entry === 'object' && entry) return _extends({}, entry, { key: key });
 
-	    _invariant2['default'](false, 'Unable to create history entry from %s', entry);
+	     true ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, 'Unable to create history entry from %s', entry) : _invariant2['default'](false) : undefined;
 	  });
 
 	  if (current == null) {
 	    current = entries.length - 1;
 	  } else {
-	    _invariant2['default'](current >= 0 && current < entries.length, 'Current index must be >= 0 and < %s, was %s', entries.length, current);
+	    !(current >= 0 && current < entries.length) ? process.env.NODE_ENV !== 'production' ? _invariant2['default'](false, 'Current index must be >= 0 and < %s, was %s', entries.length, current) : _invariant2['default'](false) : undefined;
 	  }
 
 	  var storage = createStateStorage(entries);
@@ -27201,7 +27439,9 @@
 	      entry.key = key;
 	    }
 
-	    return history.createLocation(path, state, undefined, key);
+	    var location = _parsePath2['default'](path);
+
+	    return history.createLocation(_extends({}, location, { state: state }), undefined, key);
 	  }
 
 	  function canGo(n) {
@@ -27211,7 +27451,10 @@
 
 	  function go(n) {
 	    if (n) {
-	      _invariant2['default'](canGo(n), 'Cannot go(%s) there is not enough history', n);
+	      if (!canGo(n)) {
+	        process.env.NODE_ENV !== 'production' ? _warning2['default'](false, 'Cannot go(%s) there is not enough history', n) : undefined;
+	        return;
+	      }
 
 	      current += n;
 
@@ -27246,9 +27489,10 @@
 
 	exports['default'] = createMemoryHistory;
 	module.exports = exports['default'];
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
 
 /***/ },
-/* 223 */
+/* 226 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -27261,9 +27505,23 @@
 
 	function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
 
-	var _runTransitionHook = __webpack_require__(193);
+	var _ExecutionEnvironment = __webpack_require__(185);
+
+	var _runTransitionHook = __webpack_require__(197);
 
 	var _runTransitionHook2 = _interopRequireDefault(_runTransitionHook);
+
+	var _extractPath = __webpack_require__(196);
+
+	var _extractPath2 = _interopRequireDefault(_extractPath);
+
+	var _parsePath = __webpack_require__(195);
+
+	var _parsePath2 = _interopRequireDefault(_parsePath);
+
+	var _deprecate = __webpack_require__(198);
+
+	var _deprecate2 = _interopRequireDefault(_deprecate);
 
 	function useBasename(createHistory) {
 	  return function () {
@@ -27273,6 +27531,14 @@
 	    var historyOptions = _objectWithoutProperties(options, ['basename']);
 
 	    var history = createHistory(historyOptions);
+
+	    // Automatically use the value of <base href> in HTML
+	    // documents as basename if it's not explicitly given.
+	    if (basename == null && _ExecutionEnvironment.canUseDOM) {
+	      var base = document.getElementsByTagName('base')[0];
+
+	      if (base) basename = _extractPath2['default'](base.href);
+	    }
 
 	    function addBasename(location) {
 	      if (basename && location.basename == null) {
@@ -27289,8 +27555,19 @@
 	      return location;
 	    }
 
-	    function prependBasename(path) {
-	      return basename ? basename + path : path;
+	    function prependBasename(location) {
+	      if (!basename) return location;
+
+	      if (typeof location === 'string') location = _parsePath2['default'](location);
+
+	      var pname = location.pathname;
+	      var normalizedBasename = basename.slice(-1) === '/' ? basename : basename + '/';
+	      var normalizedPathname = pname.charAt(0) === '/' ? pname.slice(1) : pname;
+	      var pathname = normalizedBasename + normalizedPathname;
+
+	      return _extends({}, location, {
+	        pathname: pathname
+	      });
 	    }
 
 	    // Override all read methods with basename-aware versions.
@@ -27307,34 +27584,51 @@
 	    }
 
 	    // Override all write methods with basename-aware versions.
-	    function pushState(state, path) {
-	      history.pushState(state, prependBasename(path));
+	    function push(location) {
+	      history.push(prependBasename(location));
 	    }
 
-	    function replaceState(state, path) {
-	      history.replaceState(state, prependBasename(path));
+	    function replace(location) {
+	      history.replace(prependBasename(location));
 	    }
 
-	    function createPath(path) {
-	      return history.createPath(prependBasename(path));
+	    function createPath(location) {
+	      return history.createPath(prependBasename(location));
 	    }
 
-	    function createHref(path) {
-	      return history.createHref(prependBasename(path));
+	    function createHref(location) {
+	      return history.createHref(prependBasename(location));
 	    }
 
 	    function createLocation() {
 	      return addBasename(history.createLocation.apply(history, arguments));
 	    }
 
+	    // deprecated
+	    function pushState(state, path) {
+	      if (typeof path === 'string') path = _parsePath2['default'](path);
+
+	      push(_extends({ state: state }, path));
+	    }
+
+	    // deprecated
+	    function replaceState(state, path) {
+	      if (typeof path === 'string') path = _parsePath2['default'](path);
+
+	      replace(_extends({ state: state }, path));
+	    }
+
 	    return _extends({}, history, {
 	      listenBefore: listenBefore,
 	      listen: listen,
-	      pushState: pushState,
-	      replaceState: replaceState,
+	      push: push,
+	      replace: replace,
 	      createPath: createPath,
 	      createHref: createHref,
-	      createLocation: createLocation
+	      createLocation: createLocation,
+
+	      pushState: _deprecate2['default'](pushState, 'pushState is deprecated; use push instead'),
+	      replaceState: _deprecate2['default'](replaceState, 'replaceState is deprecated; use replace instead')
 	    });
 	  };
 	}
@@ -27343,7 +27637,7 @@
 	module.exports = exports['default'];
 
 /***/ },
-/* 224 */
+/* 227 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -27352,10 +27646,277 @@
 
 	var Comment = React.createClass({
 	  displayName: 'CodeReddit Comment',
+	  getInitialState: function getInitialState() {
+	    return {
+	      showComments: true
+	    };
+	  },
+	  toggleComments: function toggleComments() {
+	    if (this.state.showComments == true) {
+	      this.setState({ showComments: false });
+	    } else {
+	      this.setState({ showComments: true });
+	    }
+	  },
 	  formatCommentText: function formatCommentText() {
 	    // If it's a self text we're going to output a large
 	    // comment block.
 	    if (!this.props.text) {
+	      return '';
+	    }
+
+	    var commentChars = [];
+	    switch (this.props.lang) {
+	      case 'python':
+	        commentChars[0] = '"""';
+	        commentChars[1] = '"""';
+	        break;
+	      case 'php':
+	      case 'javascript':
+	      case 'java':
+	        commentChars[0] = "/*";
+	        commentChars[1] = "*/";
+	    }
+
+	    var text = this.props.text.replace(/(\r\n|\n|\r)/gm, ""),
+	        new_text = this.props.space + commentChars[0] + "\n",
+	        num_splits = Math.floor(text.length / 80);
+	    for (var i = 0; i <= num_splits; i++) {
+	      new_text = new_text + this.props.space + text.substring(i * 80, (i + 1) * 80).trim() + "\n";
+	    }
+
+	    return new_text + this.props.space + commentChars[1];
+	  },
+	  render: function render() {
+	    var _this = this;
+
+	    var commentNodes = this.props.children.map(function (childComment) {
+	      var children = childComment.data.replies ? childComment.data.replies.data.children : [];
+	      return React.createElement(Comment, { key: childComment.data.id, children: children, author: childComment.data.author, lang: _this.props.lang, score: childComment.data.score, text: childComment.data.body, space: _this.props.space + "  " });
+	    });
+
+	    var commentChars = [];
+	    var commentClass = "hljs-comment";
+	    switch (this.props.lang) {
+	      case 'python':
+	        commentChars[0] = '"""';
+	        commentChars[1] = '"""';
+	        commentClass = "hljs-string";
+	        break;
+	      case 'php':
+	      case 'javascript':
+	      case 'java':
+	        commentChars[0] = "/*";
+	        commentChars[1] = "*/";
+	        var commentClass = "hljs-comment";
+	    }
+
+	    var hiddenNode = React.createElement(
+	      'div',
+	      { className: commentClass },
+	      this.props.space,
+	      commentChars[0],
+	      ' Comments Hidden ',
+	      commentChars[1]
+	    );
+
+	    switch (this.props.lang) {
+	      case 'php':
+	        return React.createElement(
+	          'pre',
+	          { className: 'comment {this.props.lang}' },
+	          this.props.space,
+	          React.createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-variable' },
+	              '$score'
+	            ),
+	            ' = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-number' },
+	              this.props.score
+	            ),
+	            '; ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-variable' },
+	              '$author ='
+	            ),
+	            ' ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-string' },
+	              this.props.author,
+	              '"'
+	            ),
+	            ';'
+	          ),
+	          React.createElement('br', null),
+	          React.createElement(
+	            'span',
+	            { className: commentClass },
+	            this.formatCommentText()
+	          ),
+	          this.state.showComments ? commentNodes : hiddenNode
+	        );
+	      case 'javascript':
+	        return React.createElement(
+	          'pre',
+	          { className: 'comment {this.props.lang}' },
+	          this.props.space,
+	          React.createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-keyword' },
+	              'var'
+	            ),
+	            ' score = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-number' },
+	              this.props.score
+	            ),
+	            ', author = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-string' },
+	              '"',
+	              this.props.author,
+	              '"'
+	            ),
+	            ';'
+	          ),
+	          React.createElement('br', null),
+	          React.createElement(
+	            'span',
+	            { className: commentClass },
+	            this.formatCommentText()
+	          ),
+	          this.state.showComments ? commentNodes : hiddenNode
+	        );
+	      case 'python':
+	        return React.createElement(
+	          'pre',
+	          { className: 'comment {this.props.lang}' },
+	          this.props.space,
+	          React.createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            'score = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-number' },
+	              this.props.score
+	            ),
+	            ', author = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-string' },
+	              '"',
+	              this.props.author,
+	              '"'
+	            ),
+	            ';'
+	          ),
+	          React.createElement('br', null),
+	          React.createElement(
+	            'span',
+	            { className: commentClass },
+	            this.formatCommentText()
+	          ),
+	          this.state.showComments ? commentNodes : hiddenNode
+	        );
+	      case 'java':
+	        return React.createElement(
+	          'pre',
+	          { className: 'comment {this.props.lang}' },
+	          this.props.space,
+	          React.createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-built_in' },
+	              'int'
+	            ),
+	            ' score = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-number' },
+	              this.props.score
+	            ),
+	            ';'
+	          ),
+	          React.createElement('br', null),
+	          this.props.space,
+	          React.createElement(
+	            'a',
+	            { onClick: this.toggleComments },
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-built_in' },
+	              'String'
+	            ),
+	            ' author = ',
+	            React.createElement(
+	              'span',
+	              { className: 'hljs-string' },
+	              '"',
+	              this.props.author,
+	              '"'
+	            ),
+	            ';'
+	          ),
+	          React.createElement('br', null),
+	          React.createElement(
+	            'span',
+	            { className: commentClass },
+	            this.formatCommentText()
+	          ),
+	          this.state.showComments ? commentNodes : hiddenNode
+	        );
+	    }
+	  }
+	});
+
+	module.exports = Comment;
+
+/***/ },
+/* 228 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var React = __webpack_require__(1);
+
+	var Preview = React.createClass({
+
+	  displayName: 'CodeReddit Preview',
+
+	  // decodeHtml: function(str) {
+
+	  // var element = document.createElement('div');
+	  //  if(str && typeof str === 'string') {
+	  //    // strip script/html tags
+	  //    str = str.replace(/<script[^>]*>([\S\s]*?)<\/script>/gmi, '');
+	  //    str = str.replace(/<\/?\w(?:[^"'>]|"[^"]*"|'[^']*')*>/gmi, '');
+	  //    element.innerHTML = str;
+	  //    str = element.textContent;
+	  //    element.textContent = '';
+
+	  //    return str;
+	  //  }
+	  // },
+	  formatText: function formatText() {
+	    // If it's a self text we're going to output a large
+	    // comment block.
+	    if (!this.props.selfText) {
 	      return '';
 	    }
 
@@ -27372,234 +27933,210 @@
 	        commentChars[1] = "*/";
 	    }
 
-	    var text = this.props.text.replace(/(\r\n|\n|\r)/gm, ""),
-	        new_text = this.props.space + commentChars[0] + "\n",
-	        num_splits = Math.floor(text.length / 80);
-	    for (var i = 0; i <= num_splits; i++) {
-	      new_text = new_text + this.props.space + text.substring(i * 80, (i + 1) * 80).trim() + "\n";
+	    var text = this.props.selfText.split(/\r?\n/),
+	        new_text = this.props.space + commentChars[0] + "\n";
+	    for (var i = 0; i < text.length; i++) {
+	      new_text = new_text + this.props.space + text[i] + "\n";
 	    }
 	    return new_text + this.props.space + commentChars[1];
 	  },
 	  render: function render() {
-	    var _this = this;
 
-	    var commentNodes = this.props.children.map(function (childComment) {
-	      var children = childComment.data.replies ? childComment.data.replies.data.children : [];
-	      return React.createElement(Comment, { key: childComment.data.id, children: children, author: childComment.data.author, lang: _this.props.lang, score: childComment.data.score, text: childComment.data.body, space: _this.props.space + "  " });
-	    });
-
-	    switch (this.props.lang) {
-	      case 'php':
-	        return React.createElement(
-	          'pre',
-	          { className: 'comment {this.props.lang}' },
-	          this.props.space,
-	          '$score = ',
-	          this.props.score,
-	          '; $author = "',
-	          this.props.author,
-	          '";',
-	          React.createElement('br', null),
-	          this.formatCommentText(),
-	          commentNodes
-	        );
-	      case 'javascript':
-	        return React.createElement(
-	          'pre',
-	          { className: 'comment {this.props.lang}' },
-	          this.props.space,
-	          'var score = ',
-	          this.props.score,
-	          ', author = "',
-	          this.props.author,
-	          '";',
-	          React.createElement('br', null),
-	          this.formatCommentText(),
-	          commentNodes
-	        );
-	      case 'python':
-	        return React.createElement(
-	          'pre',
-	          { className: 'comment {this.props.lang}' },
-	          this.props.space,
-	          'score = ',
-	          this.props.score,
-	          ', author = "',
-	          this.props.author,
-	          '"',
-	          React.createElement('br', null),
-	          this.formatCommentText(),
-	          commentNodes
-	        );
-	      case 'java':
-	        return React.createElement(
-	          'pre',
-	          { className: 'comment {this.props.lang}' },
-	          this.props.space,
-	          'int score = ',
-	          this.props.score,
-	          ';',
-	          React.createElement('br', null),
-	          this.props.space,
-	          'String author = "',
-	          this.props.author,
-	          '";',
-	          React.createElement('br', null),
-	          this.formatCommentText(),
-	          commentNodes
-	        );
+	    if (this.props.selfText) {
+	      return React.createElement(
+	        'pre',
+	        { className: 'hljs-comment', style: { width: 500 + 'px' } },
+	        this.formatText()
+	      );
 	    }
+
+	    var imgurUrl = this.props.url.match(/(http:\/\/|https:\/\/)(imgur.com\/|i.imgur.com\/)([(A-Z)|(0-9)|(a-z)]){2,}/);
+
+	    var isImage = /\.(gif|jpe?|tiff|png)$/i.test(this.props.url);
+
+	    var youTubeUrl = this.props.url.match(/^(?:http(?:s)?:\/\/)?(?:www\.)?(?:m\.)?(?:youtu\.be\/|youtube\.com\/(?:(?:watch)?\?(?:.*&)?v(?:i)?=|(?:embed|v|vi|user)\/))([^\?&"'>]+)/);
+
+	    //Imgur
+	    if (imgurUrl != null) {
+	      if (this.props.url.endsWith('.gifv')) {
+	        return React.createElement(
+	          'video',
+	          { autoPlay: true, loop: true, muted: true, preload: true, style: { maxWidth: 500 + 'px' } },
+	          React.createElement('source', { src: imgurUrl[0] + '.webm', type: 'video/webm' }),
+	          React.createElement('source', { src: imgurUrl[0] + '.mp4', type: 'video/mp4' })
+	        );
+	      }
+
+	      //No Extension - add .jpg to show image
+	      if (imgurUrl[0].length == this.props.url.length) {
+	        return React.createElement('img', { src: imgurUrl[0] + '.jpg', style: { maxWidth: 500 + 'px' } });
+	      } else {
+	        return React.createElement('img', { src: this.props.url, style: { maxWidth: 500 + 'px' } });
+	      }
+	    }
+
+	    //Generic Image
+	    else if (isImage) {
+
+	        return React.createElement('img', { src: this.props.url, style: { maxWidth: 500 + 'px' } });
+	      } else if (youTubeUrl) {
+	        return React.createElement('iframe', { width: '500px', height: '281px', src: 'http://www.youtube.com/embed/' + youTubeUrl[1], allowfullscreen: true });
+	      }
+
+	    return React.createElement('div', null);
 	  }
 	});
 
-	module.exports = Comment;
+	module.exports = Preview;
 
 /***/ },
-/* 225 */
+/* 229 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var hljs = __webpack_require__(226);
+	var hljs = __webpack_require__(230);
 
-	hljs.registerLanguage('1c', __webpack_require__(227));
-	hljs.registerLanguage('accesslog', __webpack_require__(228));
-	hljs.registerLanguage('actionscript', __webpack_require__(229));
-	hljs.registerLanguage('apache', __webpack_require__(230));
-	hljs.registerLanguage('applescript', __webpack_require__(231));
-	hljs.registerLanguage('armasm', __webpack_require__(232));
-	hljs.registerLanguage('xml', __webpack_require__(233));
-	hljs.registerLanguage('asciidoc', __webpack_require__(234));
-	hljs.registerLanguage('aspectj', __webpack_require__(235));
-	hljs.registerLanguage('autohotkey', __webpack_require__(236));
-	hljs.registerLanguage('autoit', __webpack_require__(237));
-	hljs.registerLanguage('avrasm', __webpack_require__(238));
-	hljs.registerLanguage('axapta', __webpack_require__(239));
-	hljs.registerLanguage('bash', __webpack_require__(240));
-	hljs.registerLanguage('brainfuck', __webpack_require__(241));
-	hljs.registerLanguage('cal', __webpack_require__(242));
-	hljs.registerLanguage('capnproto', __webpack_require__(243));
-	hljs.registerLanguage('ceylon', __webpack_require__(244));
-	hljs.registerLanguage('clojure', __webpack_require__(245));
-	hljs.registerLanguage('clojure-repl', __webpack_require__(246));
-	hljs.registerLanguage('cmake', __webpack_require__(247));
-	hljs.registerLanguage('coffeescript', __webpack_require__(248));
-	hljs.registerLanguage('cpp', __webpack_require__(249));
-	hljs.registerLanguage('crystal', __webpack_require__(250));
-	hljs.registerLanguage('cs', __webpack_require__(251));
-	hljs.registerLanguage('css', __webpack_require__(252));
-	hljs.registerLanguage('d', __webpack_require__(253));
-	hljs.registerLanguage('markdown', __webpack_require__(254));
-	hljs.registerLanguage('dart', __webpack_require__(255));
-	hljs.registerLanguage('delphi', __webpack_require__(256));
-	hljs.registerLanguage('diff', __webpack_require__(257));
-	hljs.registerLanguage('django', __webpack_require__(258));
-	hljs.registerLanguage('dns', __webpack_require__(259));
-	hljs.registerLanguage('dockerfile', __webpack_require__(260));
-	hljs.registerLanguage('dos', __webpack_require__(261));
-	hljs.registerLanguage('dust', __webpack_require__(262));
-	hljs.registerLanguage('elixir', __webpack_require__(263));
-	hljs.registerLanguage('elm', __webpack_require__(264));
-	hljs.registerLanguage('ruby', __webpack_require__(265));
-	hljs.registerLanguage('erb', __webpack_require__(266));
-	hljs.registerLanguage('erlang-repl', __webpack_require__(267));
-	hljs.registerLanguage('erlang', __webpack_require__(268));
-	hljs.registerLanguage('fix', __webpack_require__(269));
-	hljs.registerLanguage('fortran', __webpack_require__(270));
-	hljs.registerLanguage('fsharp', __webpack_require__(271));
-	hljs.registerLanguage('gams', __webpack_require__(272));
-	hljs.registerLanguage('gcode', __webpack_require__(273));
-	hljs.registerLanguage('gherkin', __webpack_require__(274));
-	hljs.registerLanguage('glsl', __webpack_require__(275));
-	hljs.registerLanguage('go', __webpack_require__(276));
-	hljs.registerLanguage('golo', __webpack_require__(277));
-	hljs.registerLanguage('gradle', __webpack_require__(278));
-	hljs.registerLanguage('groovy', __webpack_require__(279));
-	hljs.registerLanguage('haml', __webpack_require__(280));
-	hljs.registerLanguage('handlebars', __webpack_require__(281));
-	hljs.registerLanguage('haskell', __webpack_require__(282));
-	hljs.registerLanguage('haxe', __webpack_require__(283));
-	hljs.registerLanguage('http', __webpack_require__(284));
-	hljs.registerLanguage('inform7', __webpack_require__(285));
-	hljs.registerLanguage('ini', __webpack_require__(286));
-	hljs.registerLanguage('irpf90', __webpack_require__(287));
-	hljs.registerLanguage('java', __webpack_require__(288));
-	hljs.registerLanguage('javascript', __webpack_require__(289));
-	hljs.registerLanguage('json', __webpack_require__(290));
-	hljs.registerLanguage('julia', __webpack_require__(291));
-	hljs.registerLanguage('kotlin', __webpack_require__(292));
-	hljs.registerLanguage('lasso', __webpack_require__(293));
-	hljs.registerLanguage('less', __webpack_require__(294));
-	hljs.registerLanguage('lisp', __webpack_require__(295));
-	hljs.registerLanguage('livecodeserver', __webpack_require__(296));
-	hljs.registerLanguage('livescript', __webpack_require__(297));
-	hljs.registerLanguage('lua', __webpack_require__(298));
-	hljs.registerLanguage('makefile', __webpack_require__(299));
-	hljs.registerLanguage('mathematica', __webpack_require__(300));
-	hljs.registerLanguage('matlab', __webpack_require__(301));
-	hljs.registerLanguage('mel', __webpack_require__(302));
-	hljs.registerLanguage('mercury', __webpack_require__(303));
-	hljs.registerLanguage('mizar', __webpack_require__(304));
-	hljs.registerLanguage('perl', __webpack_require__(305));
-	hljs.registerLanguage('mojolicious', __webpack_require__(306));
-	hljs.registerLanguage('monkey', __webpack_require__(307));
-	hljs.registerLanguage('nginx', __webpack_require__(308));
-	hljs.registerLanguage('nimrod', __webpack_require__(309));
-	hljs.registerLanguage('nix', __webpack_require__(310));
-	hljs.registerLanguage('nsis', __webpack_require__(311));
-	hljs.registerLanguage('objectivec', __webpack_require__(312));
-	hljs.registerLanguage('ocaml', __webpack_require__(313));
-	hljs.registerLanguage('openscad', __webpack_require__(314));
-	hljs.registerLanguage('oxygene', __webpack_require__(315));
-	hljs.registerLanguage('parser3', __webpack_require__(316));
-	hljs.registerLanguage('pf', __webpack_require__(317));
-	hljs.registerLanguage('php', __webpack_require__(318));
-	hljs.registerLanguage('powershell', __webpack_require__(319));
-	hljs.registerLanguage('processing', __webpack_require__(320));
-	hljs.registerLanguage('profile', __webpack_require__(321));
-	hljs.registerLanguage('prolog', __webpack_require__(322));
-	hljs.registerLanguage('protobuf', __webpack_require__(323));
-	hljs.registerLanguage('puppet', __webpack_require__(324));
-	hljs.registerLanguage('python', __webpack_require__(325));
-	hljs.registerLanguage('q', __webpack_require__(326));
-	hljs.registerLanguage('r', __webpack_require__(327));
-	hljs.registerLanguage('rib', __webpack_require__(328));
-	hljs.registerLanguage('roboconf', __webpack_require__(329));
-	hljs.registerLanguage('rsl', __webpack_require__(330));
-	hljs.registerLanguage('ruleslanguage', __webpack_require__(331));
-	hljs.registerLanguage('rust', __webpack_require__(332));
-	hljs.registerLanguage('scala', __webpack_require__(333));
-	hljs.registerLanguage('scheme', __webpack_require__(334));
-	hljs.registerLanguage('scilab', __webpack_require__(335));
-	hljs.registerLanguage('scss', __webpack_require__(336));
-	hljs.registerLanguage('smali', __webpack_require__(337));
-	hljs.registerLanguage('smalltalk', __webpack_require__(338));
-	hljs.registerLanguage('sml', __webpack_require__(339));
-	hljs.registerLanguage('sql', __webpack_require__(340));
-	hljs.registerLanguage('stata', __webpack_require__(341));
-	hljs.registerLanguage('step21', __webpack_require__(342));
-	hljs.registerLanguage('stylus', __webpack_require__(343));
-	hljs.registerLanguage('swift', __webpack_require__(344));
-	hljs.registerLanguage('tcl', __webpack_require__(345));
-	hljs.registerLanguage('tex', __webpack_require__(346));
-	hljs.registerLanguage('thrift', __webpack_require__(347));
-	hljs.registerLanguage('tp', __webpack_require__(348));
-	hljs.registerLanguage('twig', __webpack_require__(349));
-	hljs.registerLanguage('typescript', __webpack_require__(350));
-	hljs.registerLanguage('vala', __webpack_require__(351));
-	hljs.registerLanguage('vbnet', __webpack_require__(352));
-	hljs.registerLanguage('vbscript', __webpack_require__(353));
-	hljs.registerLanguage('vbscript-html', __webpack_require__(354));
-	hljs.registerLanguage('verilog', __webpack_require__(355));
-	hljs.registerLanguage('vhdl', __webpack_require__(356));
-	hljs.registerLanguage('vim', __webpack_require__(357));
-	hljs.registerLanguage('x86asm', __webpack_require__(358));
-	hljs.registerLanguage('xl', __webpack_require__(359));
-	hljs.registerLanguage('xquery', __webpack_require__(360));
-	hljs.registerLanguage('zephir', __webpack_require__(361));
+	hljs.registerLanguage('1c', __webpack_require__(231));
+	hljs.registerLanguage('accesslog', __webpack_require__(232));
+	hljs.registerLanguage('actionscript', __webpack_require__(233));
+	hljs.registerLanguage('apache', __webpack_require__(234));
+	hljs.registerLanguage('applescript', __webpack_require__(235));
+	hljs.registerLanguage('armasm', __webpack_require__(236));
+	hljs.registerLanguage('xml', __webpack_require__(237));
+	hljs.registerLanguage('asciidoc', __webpack_require__(238));
+	hljs.registerLanguage('aspectj', __webpack_require__(239));
+	hljs.registerLanguage('autohotkey', __webpack_require__(240));
+	hljs.registerLanguage('autoit', __webpack_require__(241));
+	hljs.registerLanguage('avrasm', __webpack_require__(242));
+	hljs.registerLanguage('axapta', __webpack_require__(243));
+	hljs.registerLanguage('bash', __webpack_require__(244));
+	hljs.registerLanguage('brainfuck', __webpack_require__(245));
+	hljs.registerLanguage('cal', __webpack_require__(246));
+	hljs.registerLanguage('capnproto', __webpack_require__(247));
+	hljs.registerLanguage('ceylon', __webpack_require__(248));
+	hljs.registerLanguage('clojure', __webpack_require__(249));
+	hljs.registerLanguage('clojure-repl', __webpack_require__(250));
+	hljs.registerLanguage('cmake', __webpack_require__(251));
+	hljs.registerLanguage('coffeescript', __webpack_require__(252));
+	hljs.registerLanguage('cpp', __webpack_require__(253));
+	hljs.registerLanguage('crmsh', __webpack_require__(254));
+	hljs.registerLanguage('crystal', __webpack_require__(255));
+	hljs.registerLanguage('cs', __webpack_require__(256));
+	hljs.registerLanguage('css', __webpack_require__(257));
+	hljs.registerLanguage('d', __webpack_require__(258));
+	hljs.registerLanguage('markdown', __webpack_require__(259));
+	hljs.registerLanguage('dart', __webpack_require__(260));
+	hljs.registerLanguage('delphi', __webpack_require__(261));
+	hljs.registerLanguage('diff', __webpack_require__(262));
+	hljs.registerLanguage('django', __webpack_require__(263));
+	hljs.registerLanguage('dns', __webpack_require__(264));
+	hljs.registerLanguage('dockerfile', __webpack_require__(265));
+	hljs.registerLanguage('dos', __webpack_require__(266));
+	hljs.registerLanguage('dust', __webpack_require__(267));
+	hljs.registerLanguage('elixir', __webpack_require__(268));
+	hljs.registerLanguage('elm', __webpack_require__(269));
+	hljs.registerLanguage('ruby', __webpack_require__(270));
+	hljs.registerLanguage('erb', __webpack_require__(271));
+	hljs.registerLanguage('erlang-repl', __webpack_require__(272));
+	hljs.registerLanguage('erlang', __webpack_require__(273));
+	hljs.registerLanguage('fix', __webpack_require__(274));
+	hljs.registerLanguage('fortran', __webpack_require__(275));
+	hljs.registerLanguage('fsharp', __webpack_require__(276));
+	hljs.registerLanguage('gams', __webpack_require__(277));
+	hljs.registerLanguage('gcode', __webpack_require__(278));
+	hljs.registerLanguage('gherkin', __webpack_require__(279));
+	hljs.registerLanguage('glsl', __webpack_require__(280));
+	hljs.registerLanguage('go', __webpack_require__(281));
+	hljs.registerLanguage('golo', __webpack_require__(282));
+	hljs.registerLanguage('gradle', __webpack_require__(283));
+	hljs.registerLanguage('groovy', __webpack_require__(284));
+	hljs.registerLanguage('haml', __webpack_require__(285));
+	hljs.registerLanguage('handlebars', __webpack_require__(286));
+	hljs.registerLanguage('haskell', __webpack_require__(287));
+	hljs.registerLanguage('haxe', __webpack_require__(288));
+	hljs.registerLanguage('http', __webpack_require__(289));
+	hljs.registerLanguage('inform7', __webpack_require__(290));
+	hljs.registerLanguage('ini', __webpack_require__(291));
+	hljs.registerLanguage('irpf90', __webpack_require__(292));
+	hljs.registerLanguage('java', __webpack_require__(293));
+	hljs.registerLanguage('javascript', __webpack_require__(294));
+	hljs.registerLanguage('json', __webpack_require__(295));
+	hljs.registerLanguage('julia', __webpack_require__(296));
+	hljs.registerLanguage('kotlin', __webpack_require__(297));
+	hljs.registerLanguage('lasso', __webpack_require__(298));
+	hljs.registerLanguage('less', __webpack_require__(299));
+	hljs.registerLanguage('lisp', __webpack_require__(300));
+	hljs.registerLanguage('livecodeserver', __webpack_require__(301));
+	hljs.registerLanguage('livescript', __webpack_require__(302));
+	hljs.registerLanguage('lua', __webpack_require__(303));
+	hljs.registerLanguage('makefile', __webpack_require__(304));
+	hljs.registerLanguage('mathematica', __webpack_require__(305));
+	hljs.registerLanguage('matlab', __webpack_require__(306));
+	hljs.registerLanguage('mel', __webpack_require__(307));
+	hljs.registerLanguage('mercury', __webpack_require__(308));
+	hljs.registerLanguage('mizar', __webpack_require__(309));
+	hljs.registerLanguage('perl', __webpack_require__(310));
+	hljs.registerLanguage('mojolicious', __webpack_require__(311));
+	hljs.registerLanguage('monkey', __webpack_require__(312));
+	hljs.registerLanguage('nginx', __webpack_require__(313));
+	hljs.registerLanguage('nimrod', __webpack_require__(314));
+	hljs.registerLanguage('nix', __webpack_require__(315));
+	hljs.registerLanguage('nsis', __webpack_require__(316));
+	hljs.registerLanguage('objectivec', __webpack_require__(317));
+	hljs.registerLanguage('ocaml', __webpack_require__(318));
+	hljs.registerLanguage('openscad', __webpack_require__(319));
+	hljs.registerLanguage('oxygene', __webpack_require__(320));
+	hljs.registerLanguage('parser3', __webpack_require__(321));
+	hljs.registerLanguage('pf', __webpack_require__(322));
+	hljs.registerLanguage('php', __webpack_require__(323));
+	hljs.registerLanguage('powershell', __webpack_require__(324));
+	hljs.registerLanguage('processing', __webpack_require__(325));
+	hljs.registerLanguage('profile', __webpack_require__(326));
+	hljs.registerLanguage('prolog', __webpack_require__(327));
+	hljs.registerLanguage('protobuf', __webpack_require__(328));
+	hljs.registerLanguage('puppet', __webpack_require__(329));
+	hljs.registerLanguage('python', __webpack_require__(330));
+	hljs.registerLanguage('q', __webpack_require__(331));
+	hljs.registerLanguage('r', __webpack_require__(332));
+	hljs.registerLanguage('rib', __webpack_require__(333));
+	hljs.registerLanguage('roboconf', __webpack_require__(334));
+	hljs.registerLanguage('rsl', __webpack_require__(335));
+	hljs.registerLanguage('ruleslanguage', __webpack_require__(336));
+	hljs.registerLanguage('rust', __webpack_require__(337));
+	hljs.registerLanguage('scala', __webpack_require__(338));
+	hljs.registerLanguage('scheme', __webpack_require__(339));
+	hljs.registerLanguage('scilab', __webpack_require__(340));
+	hljs.registerLanguage('scss', __webpack_require__(341));
+	hljs.registerLanguage('smali', __webpack_require__(342));
+	hljs.registerLanguage('smalltalk', __webpack_require__(343));
+	hljs.registerLanguage('sml', __webpack_require__(344));
+	hljs.registerLanguage('sqf', __webpack_require__(345));
+	hljs.registerLanguage('sql', __webpack_require__(346));
+	hljs.registerLanguage('stata', __webpack_require__(347));
+	hljs.registerLanguage('step21', __webpack_require__(348));
+	hljs.registerLanguage('stylus', __webpack_require__(349));
+	hljs.registerLanguage('swift', __webpack_require__(350));
+	hljs.registerLanguage('tcl', __webpack_require__(351));
+	hljs.registerLanguage('tex', __webpack_require__(352));
+	hljs.registerLanguage('thrift', __webpack_require__(353));
+	hljs.registerLanguage('tp', __webpack_require__(354));
+	hljs.registerLanguage('twig', __webpack_require__(355));
+	hljs.registerLanguage('typescript', __webpack_require__(356));
+	hljs.registerLanguage('vala', __webpack_require__(357));
+	hljs.registerLanguage('vbnet', __webpack_require__(358));
+	hljs.registerLanguage('vbscript', __webpack_require__(359));
+	hljs.registerLanguage('vbscript-html', __webpack_require__(360));
+	hljs.registerLanguage('verilog', __webpack_require__(361));
+	hljs.registerLanguage('vhdl', __webpack_require__(362));
+	hljs.registerLanguage('vim', __webpack_require__(363));
+	hljs.registerLanguage('x86asm', __webpack_require__(364));
+	hljs.registerLanguage('xl', __webpack_require__(365));
+	hljs.registerLanguage('xquery', __webpack_require__(366));
+	hljs.registerLanguage('zephir', __webpack_require__(367));
 
 	module.exports = hljs;
 
 /***/ },
-/* 226 */
+/* 230 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -28254,7 +28791,7 @@
 	  }
 
 	  function getLanguage(name) {
-	    name = name.toLowerCase();
+	    name = (name || '').toLowerCase();
 	    return languages[name] || languages[aliases[name]];
 	  }
 
@@ -28297,7 +28834,7 @@
 	    contains: [hljs.BACKSLASH_ESCAPE]
 	  };
 	  hljs.PHRASAL_WORDS_MODE = {
-	    begin: /\b(a|an|the|are|I|I'm|isn't|don't|doesn't|won't|but|just|should|pretty|simply|enough|gonna|going|wtf|so|such)\b/
+	    begin: /\b(a|an|the|are|I|I'm|isn't|don't|doesn't|won't|but|just|should|pretty|simply|enough|gonna|going|wtf|so|such|will|you|your|like)\b/
 	  };
 	  hljs.COMMENT = function (begin, end, inherits) {
 	    var mode = hljs.inherit(
@@ -28376,7 +28913,7 @@
 
 
 /***/ },
-/* 227 */
+/* 231 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs){
@@ -28466,7 +29003,7 @@
 	};
 
 /***/ },
-/* 228 */
+/* 232 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28508,7 +29045,7 @@
 	};
 
 /***/ },
-/* 229 */
+/* 233 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28587,7 +29124,7 @@
 	};
 
 /***/ },
-/* 230 */
+/* 234 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28637,7 +29174,7 @@
 	};
 
 /***/ },
-/* 231 */
+/* 235 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28738,7 +29275,7 @@
 	};
 
 /***/ },
-/* 232 */
+/* 236 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28834,7 +29371,7 @@
 	};
 
 /***/ },
-/* 233 */
+/* 237 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -28941,7 +29478,7 @@
 	};
 
 /***/ },
-/* 234 */
+/* 238 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29137,7 +29674,7 @@
 	};
 
 /***/ },
-/* 235 */
+/* 239 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -29279,7 +29816,7 @@
 	};
 
 /***/ },
-/* 236 */
+/* 240 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -29345,7 +29882,7 @@
 	};
 
 /***/ },
-/* 237 */
+/* 241 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31085,6 +31622,7 @@
 
 	    return {
 	        case_insensitive: true,
+	        illegal: /\/\*/,
 	        keywords: {
 	            keyword: KEYWORDS,
 	            built_in: BUILT_IN,
@@ -31103,7 +31641,7 @@
 	};
 
 /***/ },
-/* 238 */
+/* 242 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31169,7 +31707,7 @@
 	};
 
 /***/ },
-/* 239 */
+/* 243 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31204,7 +31742,7 @@
 	};
 
 /***/ },
-/* 240 */
+/* 244 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31284,7 +31822,7 @@
 	};
 
 /***/ },
-/* 241 */
+/* 245 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs){
@@ -31325,7 +31863,7 @@
 	};
 
 /***/ },
-/* 242 */
+/* 246 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31397,6 +31935,7 @@
 	  return {
 	    case_insensitive: true,
 	    keywords: { keyword: KEYWORDS, literal: LITERALS },
+	    illegal: /\/\*/,
 	    contains: [
 	      STRING, CHAR_STRING,
 	      DATE, DBL_QUOTED_VARIABLE,
@@ -31408,7 +31947,7 @@
 	};
 
 /***/ },
-/* 243 */
+/* 247 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31461,7 +32000,7 @@
 	};
 
 /***/ },
-/* 244 */
+/* 248 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31533,7 +32072,7 @@
 	};
 
 /***/ },
-/* 245 */
+/* 249 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31634,7 +32173,7 @@
 	};
 
 /***/ },
-/* 246 */
+/* 250 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31653,7 +32192,7 @@
 	};
 
 /***/ },
-/* 247 */
+/* 251 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31696,7 +32235,7 @@
 	};
 
 /***/ },
-/* 248 */
+/* 252 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31841,7 +32380,7 @@
 	};
 
 /***/ },
-/* 249 */
+/* 253 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -31986,24 +32525,128 @@
 	};
 
 /***/ },
-/* 250 */
+/* 254 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var RESOURCES = 'primitive rsc_template';
+
+	  var COMMANDS = 'group clone ms master location colocation order fencing_topology ' +
+	      'rsc_ticket acl_target acl_group user role ' +
+	      'tag xml';
+
+	  var PROPERTY_SETS = 'property rsc_defaults op_defaults';
+
+	  var KEYWORDS = 'params meta operations op rule attributes utilization';
+
+	  var OPERATORS = 'read write deny defined not_defined in_range date spec in ' +
+	      'ref reference attribute type xpath version and or lt gt tag ' +
+	      'lte gte eq ne \\';
+
+	  var TYPES = 'number string';
+
+	  var LITERALS = 'Master Started Slave Stopped start promote demote stop monitor true false';
+
+	  return {
+	    aliases: ['crm', 'pcmk'],
+	    case_insensitive: true,
+	    keywords: {
+	      keyword: KEYWORDS,
+	      operator: OPERATORS,
+	      type: TYPES,
+	      literal: LITERALS
+	    },
+	    contains: [
+	      hljs.HASH_COMMENT_MODE,
+	      {
+	        beginKeywords: 'node',
+	        starts: {
+	          className: 'identifier',
+	          end: '\\s*([\\w_-]+:)?',
+	          starts: {
+	            className: 'title',
+	            end: '\\s*[\\$\\w_][\\w_-]*'
+	          }
+	        }
+	      },
+	      {
+	        beginKeywords: RESOURCES,
+	        starts: {
+	          className: 'title',
+	          end: '\\s*[\\$\\w_][\\w_-]*',
+	          starts: {
+	            className: 'pragma',
+	            end: '\\s*@?[\\w_][\\w_\\.:-]*',
+	          }
+	        }
+	      },
+	      {
+	        begin: '\\b(' + COMMANDS.split(' ').join('|') + ')\\s+',
+	        keywords: COMMANDS,
+	        starts: {
+	          className: 'title',
+	          end: '[\\$\\w_][\\w_-]*',
+	        }
+	      },
+	      {
+	        beginKeywords: PROPERTY_SETS,
+	        starts: {
+	          className: 'title',
+	          end: '\\s*([\\w_-]+:)?'
+	        }
+	      },
+	      hljs.QUOTE_STRING_MODE,
+	      {
+	        className: 'pragma',
+	        begin: '(ocf|systemd|service|lsb):[\\w_:-]+',
+	        relevance: 0
+	      },
+	      {
+	        className: 'number',
+	        begin: '\\b\\d+(\\.\\d+)?(ms|s|h|m)?',
+	        relevance: 0
+	      },
+	      {
+	        className: 'number',
+	        begin: '[-]?(infinity|inf)',
+	        relevance: 0
+	      },
+	      {
+	        className: 'variable',
+	        begin: /([A-Za-z\$_\#][\w_-]+)=/,
+	        relevance: 0
+	      },
+	      {
+	        className: 'tag',
+	        begin: '</?',
+	        end: '/?>',
+	        relevance: 0
+	      }
+	    ]
+	  };
+	};
+
+/***/ },
+/* 255 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  var NUM_SUFFIX = '(_[uif](8|16|32|64))?';
 	  var CRYSTAL_IDENT_RE = '[a-zA-Z_]\\w*[!?=]?';
+	  var RE_STARTER = '!=|!==|%|%=|&|&&|&=|\\*|\\*=|\\+|\\+=|,|-|-=|/=|/|:|;|<<|<<=|<=|<|===|==|=|>>>=|>>=|>=|>>>|' +
+	    '>>|>|\\[|\\{|\\(|\\^|\\^=|\\||\\|=|\\|\\||~';
 	  var CRYSTAL_METHOD_RE = '[a-zA-Z_]\\w*[!?=]?|[-+~]\\@|<<|>>|=~|===?|<=>|[<>]=?|\\*\\*|[-/+%^&*~`|]|\\[\\][=?]?';
 	  var CRYSTAL_KEYWORDS = {
 	    keyword:
-	      'abstract alias asm begin break case class def do else elsif end ensure enum extend for fun if ifdef ' +
+	      'abstract alias as asm begin break case class def do else elsif end ensure enum extend for fun if ifdef ' +
 	      'include instance_sizeof is_a? lib macro module next of out pointerof private protected rescue responds_to? ' +
-	      'return require self sizeof struct super then type undef union unless until when while with yield ' +
+	      'return require self sizeof struct super then type typeof union unless until when while with yield ' +
 	      '__DIR__ __FILE__ __LINE__',
 	    literal: 'false nil true'
 	  };
 	  var SUBST = {
 	    className: 'subst',
-	    begin: '#\\{', end: '}',
+	    begin: '#{', end: '}',
 	    keywords: CRYSTAL_KEYWORDS
 	  };
 	  var EXPANSION = {
@@ -32015,18 +32658,24 @@
 	    keywords: CRYSTAL_KEYWORDS,
 	    relevance: 10
 	  };
-	  var
-	  STRING = {
+
+	  function recursiveParen(begin, end) {
+	    var
+	    contains = [{begin: begin, end: end}];
+	    contains[0].contains = contains;
+	    return contains;
+	  }
+	  var STRING = {
 	    className: 'string',
 	    contains: [hljs.BACKSLASH_ESCAPE, SUBST],
 	    variants: [
 	      {begin: /'/, end: /'/},
 	      {begin: /"/, end: /"/},
 	      {begin: /`/, end: /`/},
-	      {begin: '%w?\\(', end: '\\)'},
-	      {begin: '%w?\\[', end: '\\]'},
-	      {begin: '%w?{', end: '}'},
-	      {begin: '%w?<', end: '>'},
+	      {begin: '%w?\\(', end: '\\)', contains: recursiveParen('\\(', '\\)')},
+	      {begin: '%w?\\[', end: '\\]', contains: recursiveParen('\\[', '\\]')},
+	      {begin: '%w?{', end: '}', contains: recursiveParen('{', '}')},
+	      {begin: '%w?<', end: '>', contains: recursiveParen('<', '>')},
 	      {begin: '%w?/', end: '/'},
 	      {begin: '%w?%', end: '%'},
 	      {begin: '%w?-', end: '-'},
@@ -32034,9 +32683,53 @@
 	    ],
 	    relevance: 0,
 	  };
+	  var REGEXP = {
+	    begin: '(' + RE_STARTER + ')\\s*',
+	    contains: [
+	      {
+	        className: 'regexp',
+	        contains: [hljs.BACKSLASH_ESCAPE, SUBST],
+	        variants: [
+	          {begin: '/', end: '/[a-z]*'},
+	          {begin: '%r\\(', end: '\\)', contains: recursiveParen('\\(', '\\)')},
+	          {begin: '%r\\[', end: '\\]', contains: recursiveParen('\\[', '\\]')},
+	          {begin: '%r{', end: '}', contains: recursiveParen('{', '}')},
+	          {begin: '%r<', end: '>', contains: recursiveParen('<', '>')},
+	          {begin: '%r/', end: '/'},
+	          {begin: '%r%', end: '%'},
+	          {begin: '%r-', end: '-'},
+	          {begin: '%r\\|', end: '\\|'},
+	        ]
+	      }
+	    ],
+	    relevance: 0
+	  };
+	  var REGEXP2 = {
+	    className: 'regexp',
+	    contains: [hljs.BACKSLASH_ESCAPE, SUBST],
+	    variants: [
+	      {begin: '%r\\(', end: '\\)', contains: recursiveParen('\\(', '\\)')},
+	      {begin: '%r\\[', end: '\\]', contains: recursiveParen('\\[', '\\]')},
+	      {begin: '%r{', end: '}', contains: recursiveParen('{', '}')},
+	      {begin: '%r<', end: '>', contains: recursiveParen('<', '>')},
+	      {begin: '%r/', end: '/'},
+	      {begin: '%r%', end: '%'},
+	      {begin: '%r-', end: '-'},
+	      {begin: '%r\\|', end: '\\|'},
+	    ],
+	    relevance: 0
+	  };
+	  var ATTRIBUTE = {
+	    className: 'annotation',
+	    begin: '@\\[', end: '\\]',
+	    relevance: 5
+	  };
 	  var CRYSTAL_DEFAULT_CONTAINS = [
 	    EXPANSION,
 	    STRING,
+	    REGEXP,
+	    REGEXP2,
+	    ATTRIBUTE,
 	    hljs.HASH_COMMENT_MODE,
 	    {
 	      className: 'class',
@@ -32105,33 +32798,20 @@
 	    {
 	      className: 'number',
 	      variants: [
-	        { begin: '\\b0b([01_]+)' + NUM_SUFFIX },
-	        { begin: '\\b0o([0-7_]+)' + NUM_SUFFIX },
-	        { begin: '\\b0x([A-Fa-f0-9_]+)' + NUM_SUFFIX },
-	        { begin: '\\b(\\d[\\d_]*(\\.[0-9_]+)?([eE][+-]?[0-9_]+)?)' + NUM_SUFFIX}
+	        { begin: '\\b0b([01_]*[01])' + NUM_SUFFIX },
+	        { begin: '\\b0o([0-7_]*[0-7])' + NUM_SUFFIX },
+	        { begin: '\\b0x([A-Fa-f0-9_]*[A-Fa-f0-9])' + NUM_SUFFIX },
+	        { begin: '\\b(([0-9][0-9_]*[0-9]|[0-9])(\\.[0-9_]*[0-9])?([eE][+-]?[0-9_]*[0-9])?)' + NUM_SUFFIX}
 	      ],
 	      relevance: 0
 	    },
 	    {
 	      className: 'variable',
 	      begin: '(\\$\\W)|((\\$|\\@\\@?|%)(\\w+))'
-	    },
-	    { // regexp container
-	      begin: '(' + hljs.RE_STARTERS_RE + ')\\s*',
-	      contains: [
-	        hljs.HASH_COMMENT_MODE,
-	        {
-	          className: 'regexp',
-	          contains: [hljs.BACKSLASH_ESCAPE, SUBST],
-	          variants: [
-	            {begin: '/', end: '/[a-z]*'},
-	          ]
-	        }
-	      ],
-	      relevance: 0
 	    }
 	  ];
 	  SUBST.contains = CRYSTAL_DEFAULT_CONTAINS;
+	  ATTRIBUTE.contains = CRYSTAL_DEFAULT_CONTAINS;
 	  EXPANSION.contains = CRYSTAL_DEFAULT_CONTAINS.slice(1); // without EXPANSION
 
 	  return {
@@ -32143,7 +32823,7 @@
 	};
 
 /***/ },
-/* 251 */
+/* 256 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -32266,7 +32946,7 @@
 	};
 
 /***/ },
-/* 252 */
+/* 257 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -32311,7 +32991,6 @@
 	    illegal: /[=\/|'\$]/,
 	    contains: [
 	      hljs.C_BLOCK_COMMENT_MODE,
-	      RULE,
 	      {
 	        className: 'id', begin: /\#[A-Za-z0-9_-]+/
 	      },
@@ -32373,7 +33052,7 @@
 	};
 
 /***/ },
-/* 253 */
+/* 258 */
 /***/ function(module, exports) {
 
 	module.exports = /**
@@ -32635,7 +33314,7 @@
 	};
 
 /***/ },
-/* 254 */
+/* 259 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -32741,7 +33420,7 @@
 	};
 
 /***/ },
-/* 255 */
+/* 260 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -32846,7 +33525,7 @@
 	};
 
 /***/ },
-/* 256 */
+/* 261 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -32917,7 +33596,7 @@
 	};
 
 /***/ },
-/* 257 */
+/* 262 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -32961,7 +33640,7 @@
 	};
 
 /***/ },
-/* 258 */
+/* 263 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33015,7 +33694,7 @@
 	};
 
 /***/ },
-/* 259 */
+/* 264 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33047,7 +33726,7 @@
 	};
 
 /***/ },
-/* 260 */
+/* 265 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33055,15 +33734,15 @@
 	    aliases: ['docker'],
 	    case_insensitive: true,
 	    keywords: {
-	      built_ins: 'from maintainer cmd expose add copy entrypoint volume user workdir onbuild run env'
+	      built_ins: 'from maintainer cmd expose add copy entrypoint volume user workdir onbuild run env label'
 	    },
 	    contains: [
 	      hljs.HASH_COMMENT_MODE,
 	      {
 	        keywords : {
-	          built_in: 'run cmd entrypoint volume add copy workdir onbuild'
+	          built_in: 'run cmd entrypoint volume add copy workdir onbuild label'
 	        },
-	        begin: /^ *(onbuild +)?(run|cmd|entrypoint|volume|add|copy|workdir) +/,
+	        begin: /^ *(onbuild +)?(run|cmd|entrypoint|volume|add|copy|workdir|label) +/,
 	        starts: {
 	          end: /[^\\]\n/,
 	          subLanguage: 'bash'
@@ -33086,7 +33765,7 @@
 	};
 
 /***/ },
-/* 261 */
+/* 266 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33104,6 +33783,7 @@
 	  return {
 	    aliases: ['bat', 'cmd'],
 	    case_insensitive: true,
+	    illegal: /\/\*/,
 	    keywords: {
 	      flow: 'if else goto for in do call exit not exist errorlevel defined',
 	      operator: 'equ neq lss leq gtr geq',
@@ -33138,7 +33818,7 @@
 	};
 
 /***/ },
-/* 262 */
+/* 267 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33177,7 +33857,7 @@
 	};
 
 /***/ },
-/* 263 */
+/* 268 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33283,7 +33963,7 @@
 	};
 
 /***/ },
-/* 264 */
+/* 269 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33373,7 +34053,7 @@
 	};
 
 /***/ },
-/* 265 */
+/* 270 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33541,12 +34221,13 @@
 	  return {
 	    aliases: ['rb', 'gemspec', 'podspec', 'thor', 'irb'],
 	    keywords: RUBY_KEYWORDS,
+	    illegal: /\/\*/,
 	    contains: COMMENT_MODES.concat(IRB_DEFAULT).concat(RUBY_DEFAULT_CONTAINS)
 	  };
 	};
 
 /***/ },
-/* 266 */
+/* 271 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33565,7 +34246,7 @@
 	};
 
 /***/ },
-/* 267 */
+/* 272 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33617,7 +34298,7 @@
 	};
 
 /***/ },
-/* 268 */
+/* 273 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33773,7 +34454,7 @@
 	};
 
 /***/ },
-/* 269 */
+/* 274 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33806,7 +34487,7 @@
 	};
 
 /***/ },
-/* 270 */
+/* 275 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33860,6 +34541,7 @@
 	    case_insensitive: true,
 	    aliases: ['f90', 'f95'],
 	    keywords: F_KEYWORDS,
+	    illegal: /\/\*/,
 	    contains: [
 	      hljs.inherit(hljs.APOS_STRING_MODE, {className: 'string', relevance: 0}),
 	      hljs.inherit(hljs.QUOTE_STRING_MODE, {className: 'string', relevance: 0}),
@@ -33880,7 +34562,7 @@
 	};
 
 /***/ },
-/* 271 */
+/* 276 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -33900,6 +34582,7 @@
 	      'match member module mutable namespace new null of open or ' +
 	      'override private public rec return sig static struct then to ' +
 	      'true try type upcast use val void when while with yield',
+	    illegal: /\/\*/,
 	    contains: [
 	      {
 	        // monad builder keywords (matches before non-bang kws)
@@ -33942,7 +34625,7 @@
 	};
 
 /***/ },
-/* 272 */
+/* 277 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -33983,7 +34666,7 @@
 	};
 
 /***/ },
-/* 273 */
+/* 278 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34060,7 +34743,7 @@
 	};
 
 /***/ },
-/* 274 */
+/* 279 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -34097,7 +34780,7 @@
 	};
 
 /***/ },
-/* 275 */
+/* 280 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34195,7 +34878,7 @@
 	};
 
 /***/ },
-/* 276 */
+/* 281 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34238,7 +34921,7 @@
 	};
 
 /***/ },
-/* 277 */
+/* 282 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34266,7 +34949,7 @@
 	};
 
 /***/ },
-/* 278 */
+/* 283 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34305,7 +34988,7 @@
 	};
 
 /***/ },
-/* 279 */
+/* 284 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34397,7 +35080,7 @@
 	};
 
 /***/ },
-/* 280 */
+/* 285 */
 /***/ function(module, exports) {
 
 	module.exports = // TODO support filter tags like :javascript, support inline HTML
@@ -34509,7 +35192,7 @@
 	};
 
 /***/ },
-/* 281 */
+/* 286 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34546,7 +35229,7 @@
 	};
 
 /***/ },
-/* 282 */
+/* 287 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34674,7 +35357,7 @@
 	};
 
 /***/ },
-/* 283 */
+/* 288 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34739,7 +35422,7 @@
 	};
 
 /***/ },
-/* 284 */
+/* 289 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34778,7 +35461,7 @@
 	};
 
 /***/ },
-/* 285 */
+/* 290 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34840,7 +35523,7 @@
 	};
 
 /***/ },
-/* 286 */
+/* 291 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34904,7 +35587,7 @@
 	};
 
 /***/ },
-/* 287 */
+/* 292 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -34961,7 +35644,8 @@
 	  };
 	  return {
 	    case_insensitive: true,
-	    keywords: F_KEYWORDS, 
+	    keywords: F_KEYWORDS,
+	    illegal: /\/\*/,
 	    contains: [
 	      hljs.inherit(hljs.APOS_STRING_MODE, {className: 'string', relevance: 0}),
 	      hljs.inherit(hljs.QUOTE_STRING_MODE, {className: 'string', relevance: 0}),
@@ -34983,7 +35667,7 @@
 	};
 
 /***/ },
-/* 288 */
+/* 293 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35087,7 +35771,7 @@
 	};
 
 /***/ },
-/* 289 */
+/* 294 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35203,7 +35887,7 @@
 	};
 
 /***/ },
-/* 290 */
+/* 295 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35245,7 +35929,7 @@
 	};
 
 /***/ },
-/* 291 */
+/* 296 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35410,7 +36094,7 @@
 	};
 
 /***/ },
-/* 292 */
+/* 297 */
 /***/ function(module, exports) {
 
 	module.exports = function (hljs) {
@@ -35515,7 +36199,7 @@
 	};
 
 /***/ },
-/* 293 */
+/* 298 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35705,7 +36389,7 @@
 	};
 
 /***/ },
-/* 294 */
+/* 299 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35846,7 +36530,7 @@
 	};
 
 /***/ },
-/* 295 */
+/* 300 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -35957,7 +36641,7 @@
 	};
 
 /***/ },
-/* 296 */
+/* 301 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36119,7 +36803,7 @@
 	};
 
 /***/ },
-/* 297 */
+/* 302 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36274,7 +36958,7 @@
 	};
 
 /***/ },
-/* 298 */
+/* 303 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36334,7 +37018,7 @@
 	};
 
 /***/ },
-/* 299 */
+/* 304 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36384,7 +37068,7 @@
 	};
 
 /***/ },
-/* 300 */
+/* 305 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36447,7 +37131,7 @@
 	};
 
 /***/ },
-/* 301 */
+/* 306 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36542,7 +37226,7 @@
 	};
 
 /***/ },
-/* 302 */
+/* 307 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36776,7 +37460,7 @@
 	};
 
 /***/ },
-/* 303 */
+/* 308 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36869,7 +37553,7 @@
 	};
 
 /***/ },
-/* 304 */
+/* 309 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -36892,7 +37576,7 @@
 	};
 
 /***/ },
-/* 305 */
+/* 310 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37053,7 +37737,7 @@
 	};
 
 /***/ },
-/* 306 */
+/* 311 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37082,7 +37766,7 @@
 	};
 
 /***/ },
-/* 307 */
+/* 312 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37108,6 +37792,7 @@
 
 	      literal: 'true false null and or shl shr mod'
 	    },
+	    illegal: /\/\*/,
 	    contains: [
 	      hljs.COMMENT('#rem', '#end'),
 	      hljs.COMMENT(
@@ -37164,7 +37849,7 @@
 	};
 
 /***/ },
-/* 308 */
+/* 313 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37250,7 +37935,7 @@
 	};
 
 /***/ },
-/* 309 */
+/* 314 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37306,7 +37991,7 @@
 	};
 
 /***/ },
-/* 310 */
+/* 315 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37361,7 +38046,7 @@
 	};
 
 /***/ },
-/* 311 */
+/* 316 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37453,7 +38138,7 @@
 	};
 
 /***/ },
-/* 312 */
+/* 317 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37536,7 +38221,7 @@
 	};
 
 /***/ },
-/* 313 */
+/* 318 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37611,7 +38296,7 @@
 	};
 
 /***/ },
-/* 314 */
+/* 319 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37673,7 +38358,7 @@
 	};
 
 /***/ },
-/* 315 */
+/* 320 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37746,7 +38431,7 @@
 	};
 
 /***/ },
-/* 316 */
+/* 321 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37798,7 +38483,7 @@
 	};
 
 /***/ },
-/* 317 */
+/* 322 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37854,7 +38539,7 @@
 	};
 
 /***/ },
-/* 318 */
+/* 323 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -37983,7 +38668,7 @@
 	};
 
 /***/ },
-/* 319 */
+/* 324 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38035,7 +38720,7 @@
 	};
 
 /***/ },
-/* 320 */
+/* 325 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38087,7 +38772,7 @@
 	};
 
 /***/ },
-/* 321 */
+/* 326 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38133,7 +38818,7 @@
 	};
 
 /***/ },
-/* 322 */
+/* 327 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38226,7 +38911,7 @@
 	};
 
 /***/ },
-/* 323 */
+/* 328 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38267,7 +38952,7 @@
 	};
 
 /***/ },
-/* 324 */
+/* 329 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38379,7 +39064,7 @@
 	};
 
 /***/ },
-/* 325 */
+/* 330 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38468,7 +39153,7 @@
 	};
 
 /***/ },
-/* 326 */
+/* 331 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38495,7 +39180,7 @@
 	};
 
 /***/ },
-/* 327 */
+/* 332 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38569,7 +39254,7 @@
 	};
 
 /***/ },
-/* 328 */
+/* 333 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38600,7 +39285,7 @@
 	};
 
 /***/ },
-/* 329 */
+/* 334 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38664,7 +39349,7 @@
 	};
 
 /***/ },
-/* 330 */
+/* 335 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38705,7 +39390,7 @@
 	};
 
 /***/ },
-/* 331 */
+/* 336 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38770,7 +39455,7 @@
 	};
 
 /***/ },
-/* 332 */
+/* 337 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38860,7 +39545,7 @@
 	};
 
 /***/ },
-/* 333 */
+/* 338 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -38901,7 +39586,7 @@
 
 	  var METHOD = {
 	    className: 'function',
-	    beginKeywords: 'def val',
+	    beginKeywords: 'def',
 	    end: /[:={\[(\n;]/,
 	    contains: [NAME]
 	  };
@@ -38927,7 +39612,7 @@
 	};
 
 /***/ },
-/* 334 */
+/* 339 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39053,7 +39738,7 @@
 	};
 
 /***/ },
-/* 335 */
+/* 340 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39112,7 +39797,7 @@
 	};
 
 /***/ },
-/* 336 */
+/* 341 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39233,7 +39918,7 @@
 	};
 
 /***/ },
-/* 337 */
+/* 342 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39320,7 +40005,7 @@
 	};
 
 /***/ },
-/* 338 */
+/* 343 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39377,7 +40062,7 @@
 	};
 
 /***/ },
-/* 339 */
+/* 344 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39446,7 +40131,107 @@
 	};
 
 /***/ },
-/* 340 */
+/* 345 */
+/***/ function(module, exports) {
+
+	module.exports = function(hljs) {
+	  var allCommands = ['!', '-', '+', '!=', '%', '&&', '*', '/', '=', '==', '>', '>=', '<', '<=', 'or', 'plus', '^', ':', '>>', 'abs', 'accTime', 'acos', 'action', 'actionKeys', 'actionKeysImages', 'actionKeysNames', 'actionKeysNamesArray', 'actionName', 'activateAddons', 'activatedAddons', 'activateKey', 'addAction', 'addBackpack', 'addBackpackCargo', 'addBackpackCargoGlobal', 'addBackpackGlobal', 'addCamShake', 'addCuratorAddons', 'addCuratorCameraArea', 'addCuratorEditableObjects', 'addCuratorEditingArea', 'addCuratorPoints', 'addEditorObject', 'addEventHandler', 'addGoggles', 'addGroupIcon', 'addHandgunItem', 'addHeadgear', 'addItem', 'addItemCargo', 'addItemCargoGlobal', 'addItemPool', 'addItemToBackpack', 'addItemToUniform', 'addItemToVest', 'addLiveStats', 'addMagazine', 'addMagazine array', 'addMagazineAmmoCargo', 'addMagazineCargo', 'addMagazineCargoGlobal', 'addMagazineGlobal', 'addMagazinePool', 'addMagazines', 'addMagazineTurret', 'addMenu', 'addMenuItem', 'addMissionEventHandler', 'addMPEventHandler', 'addMusicEventHandler', 'addPrimaryWeaponItem', 'addPublicVariableEventHandler', 'addRating', 'addResources', 'addScore', 'addScoreSide', 'addSecondaryWeaponItem', 'addSwitchableUnit', 'addTeamMember', 'addToRemainsCollector', 'addUniform', 'addVehicle', 'addVest', 'addWaypoint', 'addWeapon', 'addWeaponCargo', 'addWeaponCargoGlobal', 'addWeaponGlobal', 'addWeaponPool', 'addWeaponTurret', 'agent', 'agents', 'AGLToASL', 'aimedAtTarget', 'aimPos', 'airDensityRTD', 'airportSide', 'AISFinishHeal', 'alive', 'allControls', 'allCurators', 'allDead', 'allDeadMen', 'allDisplays', 'allGroups', 'allMapMarkers', 'allMines', 'allMissionObjects', 'allow3DMode', 'allowCrewInImmobile', 'allowCuratorLogicIgnoreAreas', 'allowDamage', 'allowDammage', 'allowFileOperations', 'allowFleeing', 'allowGetIn', 'allPlayers', 'allSites', 'allTurrets', 'allUnits', 'allUnitsUAV', 'allVariables', 'ammo', 'and', 'animate', 'animateDoor', 'animationPhase', 'animationState', 'append', 'armoryPoints', 'arrayIntersect', 'asin', 'ASLToAGL', 'ASLToATL', 'assert', 'assignAsCargo', 'assignAsCargoIndex', 'assignAsCommander', 'assignAsDriver', 'assignAsGunner', 'assignAsTurret', 'assignCurator', 'assignedCargo', 'assignedCommander', 'assignedDriver', 'assignedGunner', 'assignedItems', 'assignedTarget', 'assignedTeam', 'assignedVehicle', 'assignedVehicleRole', 'assignItem', 'assignTeam', 'assignToAirport', 'atan', 'atan2', 'atg', 'ATLToASL', 'attachedObject', 'attachedObjects', 'attachedTo', 'attachObject', 'attachTo', 'attackEnabled', 'backpack', 'backpackCargo', 'backpackContainer', 'backpackItems', 'backpackMagazines', 'backpackSpaceFor', 'behaviour', 'benchmark', 'binocular', 'blufor', 'boundingBox', 'boundingBoxReal', 'boundingCenter', 'breakOut', 'breakTo', 'briefingName', 'buildingExit', 'buildingPos', 'buttonAction', 'buttonSetAction', 'cadetMode', 'call', 'callExtension', 'camCommand', 'camCommit', 'camCommitPrepared', 'camCommitted', 'camConstuctionSetParams', 'camCreate', 'camDestroy', 'cameraEffect', 'cameraEffectEnableHUD', 'cameraInterest', 'cameraOn', 'cameraView', 'campaignConfigFile', 'camPreload', 'camPreloaded', 'camPrepareBank', 'camPrepareDir', 'camPrepareDive', 'camPrepareFocus', 'camPrepareFov', 'camPrepareFovRange', 'camPreparePos', 'camPrepareRelPos', 'camPrepareTarget', 'camSetBank', 'camSetDir', 'camSetDive', 'camSetFocus', 'camSetFov', 'camSetFovRange', 'camSetPos', 'camSetRelPos', 'camSetTarget', 'camTarget', 'camUseNVG', 'canAdd', 'canAddItemToBackpack', 'canAddItemToUniform', 'canAddItemToVest', 'cancelSimpleTaskDestination', 'canFire', 'canMove', 'canSlingLoad', 'canStand', 'canUnloadInCombat', 'captive', 'captiveNum', 'case', 'catch', 'cbChecked', 'cbSetChecked', 'ceil', 'cheatsEnabled', 'checkAIFeature', 'civilian', 'className', 'clearAllItemsFromBackpack', 'clearBackpackCargo', 'clearBackpackCargoGlobal', 'clearGroupIcons', 'clearItemCargo', 'clearItemCargoGlobal', 'clearItemPool', 'clearMagazineCargo', 'clearMagazineCargoGlobal', 'clearMagazinePool', 'clearOverlay', 'clearRadio', 'clearWeaponCargo', 'clearWeaponCargoGlobal', 'clearWeaponPool', 'closeDialog', 'closeDisplay', 'closeOverlay', 'collapseObjectTree', 'combatMode', 'commandArtilleryFire', 'commandChat', 'commander', 'commandFire', 'commandFollow', 'commandFSM', 'commandGetOut', 'commandingMenu', 'commandMove', 'commandRadio', 'commandStop', 'commandTarget', 'commandWatch', 'comment', 'commitOverlay', 'compile', 'compileFinal', 'completedFSM', 'composeText', 'configClasses', 'configFile', 'configHierarchy', 'configName', 'configProperties', 'configSourceMod', 'configSourceModList', 'connectTerminalToUAV', 'controlNull', 'controlsGroupCtrl', 'copyFromClipboard', 'copyToClipboard', 'copyWaypoints', 'cos', 'count', 'countEnemy', 'countFriendly', 'countSide', 'countType', 'countUnknown', 'createAgent', 'createCenter', 'createDialog', 'createDiaryLink', 'createDiaryRecord', 'createDiarySubject', 'createDisplay', 'createGearDialog', 'createGroup', 'createGuardedPoint', 'createLocation', 'createMarker', 'createMarkerLocal', 'createMenu', 'createMine', 'createMissionDisplay', 'createSimpleTask', 'createSite', 'createSoundSource', 'createTask', 'createTeam', 'createTrigger', 'createUnit', 'createUnit array', 'createVehicle', 'createVehicle array', 'createVehicleCrew', 'createVehicleLocal', 'crew', 'ctrlActivate', 'ctrlAddEventHandler', 'ctrlAutoScrollDelay', 'ctrlAutoScrollRewind', 'ctrlAutoScrollSpeed', 'ctrlChecked', 'ctrlClassName', 'ctrlCommit', 'ctrlCommitted', 'ctrlCreate', 'ctrlDelete', 'ctrlEnable', 'ctrlEnabled', 'ctrlFade', 'ctrlHTMLLoaded', 'ctrlIDC', 'ctrlIDD', 'ctrlMapAnimAdd', 'ctrlMapAnimClear', 'ctrlMapAnimCommit', 'ctrlMapAnimDone', 'ctrlMapCursor', 'ctrlMapMouseOver', 'ctrlMapScale', 'ctrlMapScreenToWorld', 'ctrlMapWorldToScreen', 'ctrlModel', 'ctrlModelDirAndUp', 'ctrlModelScale', 'ctrlParent', 'ctrlPosition', 'ctrlRemoveAllEventHandlers', 'ctrlRemoveEventHandler', 'ctrlScale', 'ctrlSetActiveColor', 'ctrlSetAutoScrollDelay', 'ctrlSetAutoScrollRewind', 'ctrlSetAutoScrollSpeed', 'ctrlSetBackgroundColor', 'ctrlSetChecked', 'ctrlSetEventHandler', 'ctrlSetFade', 'ctrlSetFocus', 'ctrlSetFont', 'ctrlSetFontH1', 'ctrlSetFontH1B', 'ctrlSetFontH2', 'ctrlSetFontH2B', 'ctrlSetFontH3', 'ctrlSetFontH3B', 'ctrlSetFontH4', 'ctrlSetFontH4B', 'ctrlSetFontH5', 'ctrlSetFontH5B', 'ctrlSetFontH6', 'ctrlSetFontH6B', 'ctrlSetFontHeight', 'ctrlSetFontHeightH1', 'ctrlSetFontHeightH2', 'ctrlSetFontHeightH3', 'ctrlSetFontHeightH4', 'ctrlSetFontHeightH5', 'ctrlSetFontHeightH6', 'ctrlSetFontP', 'ctrlSetFontPB', 'ctrlSetForegroundColor', 'ctrlSetModel', 'ctrlSetModelDirAndUp', 'ctrlSetModelScale', 'ctrlSetPosition', 'ctrlSetScale', 'ctrlSetStructuredText', 'ctrlSetText', 'ctrlSetTextColor', 'ctrlSetTooltip', 'ctrlSetTooltipColorBox', 'ctrlSetTooltipColorShade', 'ctrlSetTooltipColorText', 'ctrlShow', 'ctrlShown', 'ctrlText', 'ctrlTextHeight', 'ctrlType', 'ctrlVisible', 'curatorAddons', 'curatorCamera', 'curatorCameraArea', 'curatorCameraAreaCeiling', 'curatorCoef', 'curatorEditableObjects', 'curatorEditingArea', 'curatorEditingAreaType', 'curatorMouseOver', 'curatorPoints', 'curatorRegisteredObjects', 'curatorSelected', 'curatorWaypointCost', 'currentChannel', 'currentCommand', 'currentMagazine', 'currentMagazineDetail', 'currentMagazineDetailTurret', 'currentMagazineTurret', 'currentMuzzle', 'currentNamespace', 'currentTask', 'currentTasks', 'currentThrowable', 'currentVisionMode', 'currentWaypoint', 'currentWeapon', 'currentWeaponMode', 'currentWeaponTurret', 'currentZeroing', 'cursorTarget', 'customChat', 'customRadio', 'cutFadeOut', 'cutObj', 'cutRsc', 'cutText', 'damage', 'date', 'dateToNumber', 'daytime', 'deActivateKey', 'debriefingText', 'debugFSM', 'debugLog', 'default', 'deg', 'deleteAt', 'deleteCenter', 'deleteCollection', 'deleteEditorObject', 'deleteGroup', 'deleteIdentity', 'deleteLocation', 'deleteMarker', 'deleteMarkerLocal', 'deleteRange', 'deleteResources', 'deleteSite', 'deleteStatus', 'deleteTeam', 'deleteVehicle', 'deleteVehicleCrew', 'deleteWaypoint', 'detach', 'detectedMines', 'diag activeMissionFSMs', 'diag activeSQFScripts', 'diag activeSQSScripts', 'diag captureFrame', 'diag captureSlowFrame', 'diag fps', 'diag fpsMin', 'diag frameNo', 'diag log', 'diag logSlowFrame', 'diag tickTime', 'dialog', 'diarySubjectExists', 'didJIP', 'didJIPOwner', 'difficulty', 'difficultyEnabled', 'difficultyEnabledRTD', 'direction', 'directSay', 'disableAI', 'disableCollisionWith', 'disableConversation', 'disableDebriefingStats', 'disableSerialization', 'disableTIEquipment', 'disableUAVConnectability', 'disableUserInput', 'displayAddEventHandler', 'displayCtrl', 'displayNull', 'displayRemoveAllEventHandlers', 'displayRemoveEventHandler', 'displaySetEventHandler', 'dissolveTeam', 'distance', 'distance2D', 'distanceSqr', 'distributionRegion', 'do', 'doArtilleryFire', 'doFire', 'doFollow', 'doFSM', 'doGetOut', 'doMove', 'doorPhase', 'doStop', 'doTarget', 'doWatch', 'drawArrow', 'drawEllipse', 'drawIcon', 'drawIcon3D', 'drawLine', 'drawLine3D', 'drawLink', 'drawLocation', 'drawRectangle', 'driver', 'drop', 'east', 'echo', 'editObject', 'editorSetEventHandler', 'effectiveCommander', 'else', 'emptyPositions', 'enableAI', 'enableAIFeature', 'enableAttack', 'enableCamShake', 'enableCaustics', 'enableCollisionWith', 'enableCopilot', 'enableDebriefingStats', 'enableDiagLegend', 'enableEndDialog', 'enableEngineArtillery', 'enableEnvironment', 'enableFatigue', 'enableGunLights', 'enableIRLasers', 'enableMimics', 'enablePersonTurret', 'enableRadio', 'enableReload', 'enableRopeAttach', 'enableSatNormalOnDetail', 'enableSaving', 'enableSentences', 'enableSimulation', 'enableSimulationGlobal', 'enableTeamSwitch', 'enableUAVConnectability', 'enableUAVWaypoints', 'endLoadingScreen', 'endMission', 'engineOn', 'enginesIsOnRTD', 'enginesRpmRTD', 'enginesTorqueRTD', 'entities', 'estimatedEndServerTime', 'estimatedTimeLeft', 'evalObjectArgument', 'everyBackpack', 'everyContainer', 'exec', 'execEditorScript', 'execFSM', 'execVM', 'exit', 'exitWith', 'exp', 'expectedDestination', 'eyeDirection', 'eyePos', 'face', 'faction', 'fadeMusic', 'fadeRadio', 'fadeSound', 'fadeSpeech', 'failMission', 'false', 'fillWeaponsFromPool', 'find', 'findCover', 'findDisplay', 'findEditorObject', 'findEmptyPosition', 'findEmptyPositionReady', 'findNearestEnemy', 'finishMissionInit', 'finite', 'fire', 'fireAtTarget', 'firstBackpack', 'flag', 'flagOwner', 'fleeing', 'floor', 'flyInHeight', 'fog', 'fogForecast', 'fogParams', 'for', 'forceAddUniform', 'forceEnd', 'forceMap', 'forceRespawn', 'forceSpeed', 'forceWalk', 'forceWeaponFire', 'forceWeatherChange', 'forEach', 'forEachMember', 'forEachMemberAgent', 'forEachMemberTeam', 'format', 'formation', 'formationDirection', 'formationLeader', 'formationMembers', 'formationPosition', 'formationTask', 'formatText', 'formLeader', 'freeLook', 'from', 'fromEditor', 'fuel', 'fullCrew', 'gearSlotAmmoCount', 'gearSlotData', 'getAllHitPointsDamage', 'getAmmoCargo', 'getArray', 'getArtilleryAmmo', 'getArtilleryComputerSettings', 'getArtilleryETA', 'getAssignedCuratorLogic', 'getAssignedCuratorUnit', 'getBackpackCargo', 'getBleedingRemaining', 'getBurningValue', 'getCargoIndex', 'getCenterOfMass', 'getClientState', 'getConnectedUAV', 'getDammage', 'getDescription', 'getDir', 'getDirVisual', 'getDLCs', 'getEditorCamera', 'getEditorMode', 'getEditorObjectScope', 'getElevationOffset', 'getFatigue', 'getFriend', 'getFSMVariable', 'getFuelCargo', 'getGroupIcon', 'getGroupIconParams', 'getGroupIcons', 'getHideFrom', 'getHit', 'getHitIndex', 'getHitPointDamage', 'getItemCargo', 'getMagazineCargo', 'getMarkerColor', 'getMarkerPos', 'getMarkerSize', 'getMarkerType', 'getMass', 'getModelInfo', 'getNumber', 'getObjectArgument', 'getObjectChildren', 'getObjectDLC', 'getObjectMaterials', 'getObjectProxy', 'getObjectTextures', 'getObjectType', 'getObjectViewDistance', 'getOxygenRemaining', 'getPersonUsedDLCs', 'getPlayerChannel', 'getPlayerUID', 'getPos', 'getPosASL', 'getPosASLVisual', 'getPosASLW', 'getPosATL', 'getPosATLVisual', 'getPosVisual', 'getPosWorld', 'getRepairCargo', 'getResolution', 'getShadowDistance', 'getSlingLoad', 'getSpeed', 'getSuppression', 'getTerrainHeightASL', 'getText', 'getVariable', 'getWeaponCargo', 'getWPPos', 'glanceAt', 'globalChat', 'globalRadio', 'goggles', 'goto', 'group', 'groupChat', 'groupFromNetId', 'groupIconSelectable', 'groupIconsVisible', 'groupId', 'groupOwner', 'groupRadio', 'groupSelectedUnits', 'groupSelectUnit', 'grpNull', 'gunner', 'gusts', 'halt', 'handgunItems', 'handgunMagazine', 'handgunWeapon', 'handsHit', 'hasInterface', 'hasWeapon', 'hcAllGroups', 'hcGroupParams', 'hcLeader', 'hcRemoveAllGroups', 'hcRemoveGroup', 'hcSelected', 'hcSelectGroup', 'hcSetGroup', 'hcShowBar', 'hcShownBar', 'headgear', 'hideBody', 'hideObject', 'hideObjectGlobal', 'hint', 'hintC', 'hintCadet', 'hintSilent', 'hmd', 'hostMission', 'htmlLoad', 'HUDMovementLevels', 'humidity', 'if', 'image', 'importAllGroups', 'importance', 'in', 'incapacitatedState', 'independent', 'inflame', 'inflamed', 'inGameUISetEventHandler', 'inheritsFrom', 'initAmbientLife', 'inputAction', 'inRangeOfArtillery', 'insertEditorObject', 'intersect', 'isAbleToBreathe', 'isAgent', 'isArray', 'isAutoHoverOn', 'isAutonomous', 'isAutotest', 'isBleeding', 'isBurning', 'isClass', 'isCollisionLightOn', 'isCopilotEnabled', 'isDedicated', 'isDLCAvailable', 'isEngineOn', 'isEqualTo', 'isFlashlightOn', 'isFlatEmpty', 'isForcedWalk', 'isFormationLeader', 'isHidden', 'isInRemainsCollector', 'isInstructorFigureEnabled', 'isIRLaserOn', 'isKeyActive', 'isKindOf', 'isLightOn', 'isLocalized', 'isManualFire', 'isMarkedForCollection', 'isMultiplayer', 'isNil', 'isNull', 'isNumber', 'isObjectHidden', 'isObjectRTD', 'isOnRoad', 'isPipEnabled', 'isPlayer', 'isRealTime', 'isServer', 'isShowing3DIcons', 'isSteamMission', 'isStreamFriendlyUIEnabled', 'isText', 'isTouchingGround', 'isTurnedOut', 'isTutHintsEnabled', 'isUAVConnectable', 'isUAVConnected', 'isUniformAllowed', 'isWalking', 'isWeaponDeployed', 'isWeaponRested', 'itemCargo', 'items', 'itemsWithMagazines', 'join', 'joinAs', 'joinAsSilent', 'joinSilent', 'joinString', 'kbAddDatabase', 'kbAddDatabaseTargets', 'kbAddTopic', 'kbHasTopic', 'kbReact', 'kbRemoveTopic', 'kbTell', 'kbWasSaid', 'keyImage', 'keyName', 'knowsAbout', 'land', 'landAt', 'landResult', 'language', 'laserTarget', 'lbAdd', 'lbClear', 'lbColor', 'lbCurSel', 'lbData', 'lbDelete', 'lbIsSelected', 'lbPicture', 'lbSelection', 'lbSetColor', 'lbSetCurSel', 'lbSetData', 'lbSetPicture', 'lbSetPictureColor', 'lbSetPictureColorDisabled', 'lbSetPictureColorSelected', 'lbSetSelectColor', 'lbSetSelectColorRight', 'lbSetSelected', 'lbSetTooltip', 'lbSetValue', 'lbSize', 'lbSort', 'lbSortByValue', 'lbText', 'lbValue', 'leader', 'leaderboardDeInit', 'leaderboardGetRows', 'leaderboardInit', 'leaveVehicle', 'libraryCredits', 'libraryDisclaimers', 'lifeState', 'lightAttachObject', 'lightDetachObject', 'lightIsOn', 'lightnings', 'limitSpeed', 'linearConversion', 'lineBreak', 'lineIntersects', 'lineIntersectsObjs', 'lineIntersectsSurfaces', 'lineIntersectsWith', 'linkItem', 'list', 'listObjects', 'ln', 'lnbAddArray', 'lnbAddColumn', 'lnbAddRow', 'lnbClear', 'lnbColor', 'lnbCurSelRow', 'lnbData', 'lnbDeleteColumn', 'lnbDeleteRow', 'lnbGetColumnsPosition', 'lnbPicture', 'lnbSetColor', 'lnbSetColumnsPos', 'lnbSetCurSelRow', 'lnbSetData', 'lnbSetPicture', 'lnbSetText', 'lnbSetValue', 'lnbSize', 'lnbText', 'lnbValue', 'load', 'loadAbs', 'loadBackpack', 'loadFile', 'loadGame', 'loadIdentity', 'loadMagazine', 'loadOverlay', 'loadStatus', 'loadUniform', 'loadVest', 'local', 'localize', 'locationNull', 'locationPosition', 'lock', 'lockCameraTo', 'lockCargo', 'lockDriver', 'locked', 'lockedCargo', 'lockedDriver', 'lockedTurret', 'lockTurret', 'lockWP', 'log', 'logEntities', 'lookAt', 'lookAtPos', 'magazineCargo', 'magazines', 'magazinesAllTurrets', 'magazinesAmmo', 'magazinesAmmoCargo', 'magazinesAmmoFull', 'magazinesDetail', 'magazinesDetailBackpack', 'magazinesDetailUniform', 'magazinesDetailVest', 'magazinesTurret', 'magazineTurretAmmo', 'mapAnimAdd', 'mapAnimClear', 'mapAnimCommit', 'mapAnimDone', 'mapCenterOnCamera', 'mapGridPosition', 'markAsFinishedOnSteam', 'markerAlpha', 'markerBrush', 'markerColor', 'markerDir', 'markerPos', 'markerShape', 'markerSize', 'markerText', 'markerType', 'max', 'members', 'min', 'mineActive', 'mineDetectedBy', 'missionConfigFile', 'missionName', 'missionNamespace', 'missionStart', 'mod', 'modelToWorld', 'modelToWorldVisual', 'moonIntensity', 'morale', 'move', 'moveInAny', 'moveInCargo', 'moveInCommander', 'moveInDriver', 'moveInGunner', 'moveInTurret', 'moveObjectToEnd', 'moveOut', 'moveTime', 'moveTo', 'moveToCompleted', 'moveToFailed', 'musicVolume', 'name', 'name location', 'nameSound', 'nearEntities', 'nearestBuilding', 'nearestLocation', 'nearestLocations', 'nearestLocationWithDubbing', 'nearestObject', 'nearestObjects', 'nearObjects', 'nearObjectsReady', 'nearRoads', 'nearSupplies', 'nearTargets', 'needReload', 'netId', 'netObjNull', 'newOverlay', 'nextMenuItemIndex', 'nextWeatherChange', 'nil', 'nMenuItems', 'not', 'numberToDate', 'objectCurators', 'objectFromNetId', 'objectParent', 'objNull', 'objStatus', 'onBriefingGroup', 'onBriefingNotes', 'onBriefingPlan', 'onBriefingTeamSwitch', 'onCommandModeChanged', 'onDoubleClick', 'onEachFrame', 'onGroupIconClick', 'onGroupIconOverEnter', 'onGroupIconOverLeave', 'onHCGroupSelectionChanged', 'onMapSingleClick', 'onPlayerConnected', 'onPlayerDisconnected', 'onPreloadFinished', 'onPreloadStarted', 'onShowNewObject', 'onTeamSwitch', 'openCuratorInterface', 'openMap', 'openYoutubeVideo', 'opfor', 'or', 'orderGetIn', 'overcast', 'overcastForecast', 'owner', 'param', 'params', 'parseNumber', 'parseText', 'parsingNamespace', 'particlesQuality', 'pi', 'pickWeaponPool', 'pitch', 'playableSlotsNumber', 'playableUnits', 'playAction', 'playActionNow', 'player', 'playerRespawnTime', 'playerSide', 'playersNumber', 'playGesture', 'playMission', 'playMove', 'playMoveNow', 'playMusic', 'playScriptedMission', 'playSound', 'playSound3D', 'position', 'positionCameraToWorld', 'posScreenToWorld', 'posWorldToScreen', 'ppEffectAdjust', 'ppEffectCommit', 'ppEffectCommitted', 'ppEffectCreate', 'ppEffectDestroy', 'ppEffectEnable', 'ppEffectForceInNVG', 'precision', 'preloadCamera', 'preloadObject', 'preloadSound', 'preloadTitleObj', 'preloadTitleRsc', 'preprocessFile', 'preprocessFileLineNumbers', 'primaryWeapon', 'primaryWeaponItems', 'primaryWeaponMagazine', 'priority', 'private', 'processDiaryLink', 'productVersion', 'profileName', 'profileNamespace', 'profileNameSteam', 'progressLoadingScreen', 'progressPosition', 'progressSetPosition', 'publicVariable', 'publicVariableClient', 'publicVariableServer', 'pushBack', 'putWeaponPool', 'queryItemsPool', 'queryMagazinePool', 'queryWeaponPool', 'rad', 'radioChannelAdd', 'radioChannelCreate', 'radioChannelRemove', 'radioChannelSetCallSign', 'radioChannelSetLabel', 'radioVolume', 'rain', 'rainbow', 'random', 'rank', 'rankId', 'rating', 'rectangular', 'registeredTasks', 'registerTask', 'reload', 'reloadEnabled', 'remoteControl', 'remoteExec', 'remoteExecCall', 'removeAction', 'removeAllActions', 'removeAllAssignedItems', 'removeAllContainers', 'removeAllCuratorAddons', 'removeAllCuratorCameraAreas', 'removeAllCuratorEditingAreas', 'removeAllEventHandlers', 'removeAllHandgunItems', 'removeAllItems', 'removeAllItemsWithMagazines', 'removeAllMissionEventHandlers', 'removeAllMPEventHandlers', 'removeAllMusicEventHandlers', 'removeAllPrimaryWeaponItems', 'removeAllWeapons', 'removeBackpack', 'removeBackpackGlobal', 'removeCuratorAddons', 'removeCuratorCameraArea', 'removeCuratorEditableObjects', 'removeCuratorEditingArea', 'removeDrawIcon', 'removeDrawLinks', 'removeEventHandler', 'removeFromRemainsCollector', 'removeGoggles', 'removeGroupIcon', 'removeHandgunItem', 'removeHeadgear', 'removeItem', 'removeItemFromBackpack', 'removeItemFromUniform', 'removeItemFromVest', 'removeItems', 'removeMagazine', 'removeMagazineGlobal', 'removeMagazines', 'removeMagazinesTurret', 'removeMagazineTurret', 'removeMenuItem', 'removeMissionEventHandler', 'removeMPEventHandler', 'removeMusicEventHandler', 'removePrimaryWeaponItem', 'removeSecondaryWeaponItem', 'removeSimpleTask', 'removeSwitchableUnit', 'removeTeamMember', 'removeUniform', 'removeVest', 'removeWeapon', 'removeWeaponGlobal', 'removeWeaponTurret', 'requiredVersion', 'resetCamShake', 'resetSubgroupDirection', 'resistance', 'resize', 'resources', 'respawnVehicle', 'restartEditorCamera', 'reveal', 'revealMine', 'reverse', 'reversedMouseY', 'roadsConnectedTo', 'roleDescription', 'ropeAttachedObjects', 'ropeAttachedTo', 'ropeAttachEnabled', 'ropeAttachTo', 'ropeCreate', 'ropeCut', 'ropeEndPosition', 'ropeLength', 'ropes', 'ropeUnwind', 'ropeUnwound', 'rotorsForcesRTD', 'rotorsRpmRTD', 'round', 'runInitScript', 'safeZoneH', 'safeZoneW', 'safeZoneWAbs', 'safeZoneX', 'safeZoneXAbs', 'safeZoneY', 'saveGame', 'saveIdentity', 'saveJoysticks', 'saveOverlay', 'saveProfileNamespace', 'saveStatus', 'saveVar', 'savingEnabled', 'say', 'say2D', 'say3D', 'scopeName', 'score', 'scoreSide', 'screenToWorld', 'scriptDone', 'scriptName', 'scriptNull', 'scudState', 'secondaryWeapon', 'secondaryWeaponItems', 'secondaryWeaponMagazine', 'select', 'selectBestPlaces', 'selectDiarySubject', 'selectedEditorObjects', 'selectEditorObject', 'selectionPosition', 'selectLeader', 'selectNoPlayer', 'selectPlayer', 'selectWeapon', 'selectWeaponTurret', 'sendAUMessage', 'sendSimpleCommand', 'sendTask', 'sendTaskResult', 'sendUDPMessage', 'serverCommand', 'serverCommandAvailable', 'serverCommandExecutable', 'serverName', 'serverTime', 'set', 'setAccTime', 'setAirportSide', 'setAmmo', 'setAmmoCargo', 'setAperture', 'setApertureNew', 'setArmoryPoints', 'setAttributes', 'setAutonomous', 'setBehaviour', 'setBleedingRemaining', 'setCameraInterest', 'setCamShakeDefParams', 'setCamShakeParams', 'setCamUseTi', 'setCaptive', 'setCenterOfMass', 'setCollisionLight', 'setCombatMode', 'setCompassOscillation', 'setCuratorCameraAreaCeiling', 'setCuratorCoef', 'setCuratorEditingAreaType', 'setCuratorWaypointCost', 'setCurrentChannel', 'setCurrentTask', 'setCurrentWaypoint', 'setDamage', 'setDammage', 'setDate', 'setDebriefingText', 'setDefaultCamera', 'setDestination', 'setDetailMapBlendPars', 'setDir', 'setDirection', 'setDrawIcon', 'setDropInterval', 'setEditorMode', 'setEditorObjectScope', 'setEffectCondition', 'setFace', 'setFaceAnimation', 'setFatigue', 'setFlagOwner', 'setFlagSide', 'setFlagTexture', 'setFog', 'setFog array', 'setFormation', 'setFormationTask', 'setFormDir', 'setFriend', 'setFromEditor', 'setFSMVariable', 'setFuel', 'setFuelCargo', 'setGroupIcon', 'setGroupIconParams', 'setGroupIconsSelectable', 'setGroupIconsVisible', 'setGroupId', 'setGroupIdGlobal', 'setGroupOwner', 'setGusts', 'setHideBehind', 'setHit', 'setHitIndex', 'setHitPointDamage', 'setHorizonParallaxCoef', 'setHUDMovementLevels', 'setIdentity', 'setImportance', 'setLeader', 'setLightAmbient', 'setLightAttenuation', 'setLightBrightness', 'setLightColor', 'setLightDayLight', 'setLightFlareMaxDistance', 'setLightFlareSize', 'setLightIntensity', 'setLightnings', 'setLightUseFlare', 'setLocalWindParams', 'setMagazineTurretAmmo', 'setMarkerAlpha', 'setMarkerAlphaLocal', 'setMarkerBrush', 'setMarkerBrushLocal', 'setMarkerColor', 'setMarkerColorLocal', 'setMarkerDir', 'setMarkerDirLocal', 'setMarkerPos', 'setMarkerPosLocal', 'setMarkerShape', 'setMarkerShapeLocal', 'setMarkerSize', 'setMarkerSizeLocal', 'setMarkerText', 'setMarkerTextLocal', 'setMarkerType', 'setMarkerTypeLocal', 'setMass', 'setMimic', 'setMousePosition', 'setMusicEffect', 'setMusicEventHandler', 'setName', 'setNameSound', 'setObjectArguments', 'setObjectMaterial', 'setObjectProxy', 'setObjectTexture', 'setObjectTextureGlobal', 'setObjectViewDistance', 'setOvercast', 'setOwner', 'setOxygenRemaining', 'setParticleCircle', 'setParticleClass', 'setParticleFire', 'setParticleParams', 'setParticleRandom', 'setPilotLight', 'setPiPEffect', 'setPitch', 'setPlayable', 'setPlayerRespawnTime', 'setPos', 'setPosASL', 'setPosASL2', 'setPosASLW', 'setPosATL', 'setPosition', 'setPosWorld', 'setRadioMsg', 'setRain', 'setRainbow', 'setRandomLip', 'setRank', 'setRectangular', 'setRepairCargo', 'setShadowDistance', 'setSide', 'setSimpleTaskDescription', 'setSimpleTaskDestination', 'setSimpleTaskTarget', 'setSimulWeatherLayers', 'setSize', 'setSkill', 'setSkill array', 'setSlingLoad', 'setSoundEffect', 'setSpeaker', 'setSpeech', 'setSpeedMode', 'setStatValue', 'setSuppression', 'setSystemOfUnits', 'setTargetAge', 'setTaskResult', 'setTaskState', 'setTerrainGrid', 'setText', 'setTimeMultiplier', 'setTitleEffect', 'setTriggerActivation', 'setTriggerArea', 'setTriggerStatements', 'setTriggerText', 'setTriggerTimeout', 'setTriggerType', 'setType', 'setUnconscious', 'setUnitAbility', 'setUnitPos', 'setUnitPosWeak', 'setUnitRank', 'setUnitRecoilCoefficient', 'setUnloadInCombat', 'setUserActionText', 'setVariable', 'setVectorDir', 'setVectorDirAndUp', 'setVectorUp', 'setVehicleAmmo', 'setVehicleAmmoDef', 'setVehicleArmor', 'setVehicleId', 'setVehicleLock', 'setVehiclePosition', 'setVehicleTiPars', 'setVehicleVarName', 'setVelocity', 'setVelocityTransformation', 'setViewDistance', 'setVisibleIfTreeCollapsed', 'setWaves', 'setWaypointBehaviour', 'setWaypointCombatMode', 'setWaypointCompletionRadius', 'setWaypointDescription', 'setWaypointFormation', 'setWaypointHousePosition', 'setWaypointLoiterRadius', 'setWaypointLoiterType', 'setWaypointName', 'setWaypointPosition', 'setWaypointScript', 'setWaypointSpeed', 'setWaypointStatements', 'setWaypointTimeout', 'setWaypointType', 'setWaypointVisible', 'setWeaponReloadingTime', 'setWind', 'setWindDir', 'setWindForce', 'setWindStr', 'setWPPos', 'show3DIcons', 'showChat', 'showCinemaBorder', 'showCommandingMenu', 'showCompass', 'showCuratorCompass', 'showGPS', 'showHUD', 'showLegend', 'showMap', 'shownArtilleryComputer', 'shownChat', 'shownCompass', 'shownCuratorCompass', 'showNewEditorObject', 'shownGPS', 'shownHUD', 'shownMap', 'shownPad', 'shownRadio', 'shownUAVFeed', 'shownWarrant', 'shownWatch', 'showPad', 'showRadio', 'showSubtitles', 'showUAVFeed', 'showWarrant', 'showWatch', 'showWaypoint', 'side', 'sideChat', 'sideEnemy', 'sideFriendly', 'sideLogic', 'sideRadio', 'sideUnknown', 'simpleTasks', 'simulationEnabled', 'simulCloudDensity', 'simulCloudOcclusion', 'simulInClouds', 'simulWeatherSync', 'sin', 'size', 'sizeOf', 'skill', 'skillFinal', 'skipTime', 'sleep', 'sliderPosition', 'sliderRange', 'sliderSetPosition', 'sliderSetRange', 'sliderSetSpeed', 'sliderSpeed', 'slingLoadAssistantShown', 'soldierMagazines', 'someAmmo', 'sort', 'soundVolume', 'spawn', 'speaker', 'speed', 'speedMode', 'splitString', 'sqrt', 'squadParams', 'stance', 'startLoadingScreen', 'step', 'stop', 'stopped', 'str', 'sunOrMoon', 'supportInfo', 'suppressFor', 'surfaceIsWater', 'surfaceNormal', 'surfaceType', 'swimInDepth', 'switch', 'switchableUnits', 'switchAction', 'switchCamera', 'switchGesture', 'switchLight', 'switchMove', 'synchronizedObjects', 'synchronizedTriggers', 'synchronizedWaypoints', 'synchronizeObjectsAdd', 'synchronizeObjectsRemove', 'synchronizeTrigger', 'synchronizeWaypoint', 'synchronizeWaypoint trigger', 'systemChat', 'systemOfUnits', 'tan', 'targetKnowledge', 'targetsAggregate', 'targetsQuery', 'taskChildren', 'taskCompleted', 'taskDescription', 'taskDestination', 'taskHint', 'taskNull', 'taskParent', 'taskResult', 'taskState', 'teamMember', 'teamMemberNull', 'teamName', 'teams', 'teamSwitch', 'teamSwitchEnabled', 'teamType', 'terminate', 'terrainIntersect', 'terrainIntersectASL', 'text', 'text location', 'textLog', 'textLogFormat', 'tg', 'then', 'throw', 'time', 'timeMultiplier', 'titleCut', 'titleFadeOut', 'titleObj', 'titleRsc', 'titleText', 'to', 'toArray', 'toLower', 'toString', 'toUpper', 'triggerActivated', 'triggerActivation', 'triggerArea', 'triggerAttachedVehicle', 'triggerAttachObject', 'triggerAttachVehicle', 'triggerStatements', 'triggerText', 'triggerTimeout', 'triggerTimeoutCurrent', 'triggerType', 'true', 'try', 'turretLocal', 'turretOwner', 'turretUnit', 'tvAdd', 'tvClear', 'tvCollapse', 'tvCount', 'tvCurSel', 'tvData', 'tvDelete', 'tvExpand', 'tvPicture', 'tvSetCurSel', 'tvSetData', 'tvSetPicture', 'tvSetPictureColor', 'tvSetTooltip', 'tvSetValue', 'tvSort', 'tvSortByValue', 'tvText', 'tvValue', 'type', 'typeName', 'typeOf', 'UAVControl', 'uiNamespace', 'uiSleep', 'unassignCurator', 'unassignItem', 'unassignTeam', 'unassignVehicle', 'underwater', 'uniform', 'uniformContainer', 'uniformItems', 'uniformMagazines', 'unitAddons', 'unitBackpack', 'unitPos', 'unitReady', 'unitRecoilCoefficient', 'units', 'unitsBelowHeight', 'unlinkItem', 'unlockAchievement', 'unregisterTask', 'updateDrawIcon', 'updateMenuItem', 'updateObjectTree', 'useAudioTimeForMoves', 'vectorAdd', 'vectorCos', 'vectorCrossProduct', 'vectorDiff', 'vectorDir', 'vectorDirVisual', 'vectorDistance', 'vectorDistanceSqr', 'vectorDotProduct', 'vectorFromTo', 'vectorMagnitude', 'vectorMagnitudeSqr', 'vectorMultiply', 'vectorNormalized', 'vectorUp', 'vectorUpVisual', 'vehicle', 'vehicleChat', 'vehicleRadio', 'vehicles', 'vehicleVarName', 'velocity', 'velocityModelSpace', 'verifySignature', 'vest', 'vestContainer', 'vestItems', 'vestMagazines', 'viewDistance', 'visibleCompass', 'visibleGPS', 'visibleMap', 'visiblePosition', 'visiblePositionASL', 'visibleWatch', 'waitUntil', 'waves', 'waypointAttachedObject', 'waypointAttachedVehicle', 'waypointAttachObject', 'waypointAttachVehicle', 'waypointBehaviour', 'waypointCombatMode', 'waypointCompletionRadius', 'waypointDescription', 'waypointFormation', 'waypointHousePosition', 'waypointLoiterRadius', 'waypointLoiterType', 'waypointName', 'waypointPosition', 'waypoints', 'waypointScript', 'waypointsEnabledUAV', 'waypointShow', 'waypointSpeed', 'waypointStatements', 'waypointTimeout', 'waypointTimeoutCurrent', 'waypointType', 'waypointVisible', 'weaponAccessories', 'weaponCargo', 'weaponDirection', 'weaponLowered', 'weapons', 'weaponsItems', 'weaponsItemsCargo', 'weaponState', 'weaponsTurret', 'weightRTD', 'west', 'WFSideText', 'while', 'wind', 'windDir', 'windStr', 'wingsForcesRTD', 'with', 'worldName', 'worldSize', 'worldToModel', 'worldToModelVisual', 'worldToScreen'];
+	  var control = ['case', 'catch', 'default', 'do', 'else', 'exit', 'exitWith|5', 'for', 'forEach', 'from', 'if', 'switch', 'then', 'throw', 'to', 'try', 'while', 'with'];
+	  var operators = ['!', '-', '+', '!=', '%', '&&', '*', '/', '=', '==', '>', '>=', '<', '<=', '^', ':', '>>'];
+	  var specials = ['_forEachIndex|10', '_this|10', '_x|10'];
+	  var literals = ['true', 'false', 'nil'];
+	  var builtins = allCommands.filter(function (command) {
+	    return control.indexOf(command) == -1 &&
+	        literals.indexOf(command) == -1 &&
+	        operators.indexOf(command) == -1;
+	  });
+	  //Note: operators will not be treated as builtins due to the lexeme rules
+	  builtins = builtins.concat(specials);
+
+	  // In SQF strings, quotes matching the start are escaped by adding a consecutive.
+	  // Example of single escaped quotes: " "" " and  ' '' '.
+	  var STRINGS = {
+	    className: 'string',
+	    relevance: 0,
+	    variants: [
+	      {
+	        begin: '"',
+	        end: '"',
+	        contains: [{begin: '""'}]
+	      },
+	      {
+	        begin: '\'',
+	        end: '\'',
+	        contains: [{begin: '\'\''}]
+	      }
+	    ]
+	  };
+
+	  var NUMBERS = {
+	    className: 'number',
+	    begin: hljs.NUMBER_RE,
+	    relevance: 0
+	  };
+
+	  // Preprocessor definitions borrowed from C++
+	  var PREPROCESSOR_STRINGS = {
+	    className: 'string',
+	    variants: [
+	      hljs.QUOTE_STRING_MODE,
+	      {
+	        begin: '\'\\\\?.', end: '\'',
+	        illegal: '.'
+	      }
+	    ]
+	  };
+
+	  var PREPROCESSOR =       {
+	    className: 'preprocessor',
+	    begin: '#', end: '$',
+	    keywords: 'if else elif endif define undef warning error line ' +
+	              'pragma ifdef ifndef',
+	    contains: [
+	      {
+	        begin: /\\\n/, relevance: 0
+	      },
+	      {
+	        beginKeywords: 'include', end: '$',
+	        contains: [
+	          PREPROCESSOR_STRINGS,
+	          {
+	            className: 'string',
+	            begin: '<', end: '>',
+	            illegal: '\\n',
+	          }
+	        ]
+	      },
+	      PREPROCESSOR_STRINGS,
+	      NUMBERS,
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE
+	    ]
+	  };
+
+	  return {
+	    aliases: ['sqf'],
+	    case_insensitive: true,
+	    keywords: {
+	      keyword: control.join(' '),
+	      built_in: builtins.join(' '),
+	      literal: literals.join(' ')
+	    },
+	    contains: [
+	      hljs.C_LINE_COMMENT_MODE,
+	      hljs.C_BLOCK_COMMENT_MODE,
+	      NUMBERS,
+	      STRINGS,
+	      PREPROCESSOR
+	    ]
+	  };
+	};
+
+/***/ },
+/* 346 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39610,7 +40395,7 @@
 	};
 
 /***/ },
-/* 341 */
+/* 347 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39652,7 +40437,7 @@
 	};
 
 /***/ },
-/* 342 */
+/* 348 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -39708,7 +40493,7 @@
 	};
 
 /***/ },
-/* 343 */
+/* 349 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40155,32 +40940,35 @@
 	};
 
 /***/ },
-/* 344 */
+/* 350 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
 	  var SWIFT_KEYWORDS = {
-	      keyword: 'class deinit enum extension func init let protocol static ' +
-	        'struct subscript typealias var break case continue default do ' +
-	        'else fallthrough if in for return switch where while as dynamicType ' +
-	        'is new super self Self Type __COLUMN__ __FILE__ __FUNCTION__ ' +
-	        '__LINE__ associativity didSet get infix inout left mutating none ' +
-	        'nonmutating operator override postfix precedence prefix right set '+
-	        'unowned unowned safe unsafe weak willSet',
+	      keyword: '__COLUMN__ __FILE__ __FUNCTION__ __LINE__ as as! as? associativity ' +
+	        'break case catch class continue convenience default defer deinit didSet do ' +
+	        'dynamic dynamicType else enum extension fallthrough false final for func ' +
+	        'get guard if import in indirect infix init inout internal is lazy left let ' +
+	        'mutating nil none nonmutating operator optional override postfix precedence ' +
+	        'prefix private protocol Protocol public repeat required rethrows return ' +
+	        'right self Self set static struct subscript super switch throw throws true ' +
+	        'try try! try? Type typealias unowned var weak where while willSet',
 	      literal: 'true false nil',
-	      built_in: 'abs advance alignof alignofValue assert bridgeFromObjectiveC ' +
-	        'bridgeFromObjectiveCUnconditional bridgeToObjectiveC ' +
-	        'bridgeToObjectiveCUnconditional c contains count countElements ' +
-	        'countLeadingZeros debugPrint debugPrintln distance dropFirst dropLast dump ' +
-	        'encodeBitsAsWords enumerate equal filter find getBridgedObjectiveCType ' +
-	        'getVaList indices insertionSort isBridgedToObjectiveC ' +
-	        'isBridgedVerbatimToObjectiveC isUniquelyReferenced join ' +
-	        'lexicographicalCompare map max maxElement min minElement numericCast ' +
-	        'partition posix print println quickSort reduce reflect reinterpretCast ' +
-	        'reverse roundUpToAlignment sizeof sizeofValue sort split startsWith strideof ' +
-	        'strideofValue swap swift toString transcode underestimateCount ' +
+	      built_in: 'abs advance alignof alignofValue anyGenerator assert assertionFailure ' +
+	        'bridgeFromObjectiveC bridgeFromObjectiveCUnconditional bridgeToObjectiveC ' +
+	        'bridgeToObjectiveCUnconditional c contains count countElements countLeadingZeros ' +
+	        'debugPrint debugPrintln distance dropFirst dropLast dump encodeBitsAsWords ' +
+	        'enumerate equal fatalError filter find getBridgedObjectiveCType getVaList ' +
+	        'indices insertionSort isBridgedToObjectiveC isBridgedVerbatimToObjectiveC ' +
+	        'isUniquelyReferenced isUniquelyReferencedNonObjC join lazy lexicographicalCompare ' +
+	        'map max maxElement min minElement numericCast overlaps partition posix ' +
+	        'precondition preconditionFailure print println quickSort readLine reduce reflect ' +
+	        'reinterpretCast reverse roundUpToAlignment sizeof sizeofValue sort split ' +
+	        'startsWith stride strideof strideofValue swap toString transcode ' +
+	        'underestimateCount unsafeAddressOf unsafeBitCast unsafeDowncast unsafeUnwrap ' +
 	        'unsafeReflect withExtendedLifetime withObjectAtPlusZero withUnsafePointer ' +
-	        'withUnsafePointerToObject withUnsafePointers withVaList'
+	        'withUnsafePointerToObject withUnsafeMutablePointer withUnsafeMutablePointers ' +
+	        'withUnsafePointer withUnsafePointers withVaList zip'
 	    };
 
 	  var TYPE = {
@@ -40260,10 +41048,12 @@
 	      },
 	      {
 	        className: 'preprocessor', // @attributes
-	        begin: '(@assignment|@class_protocol|@exported|@final|@lazy|@noreturn|' +
-	                  '@NSCopying|@NSManaged|@objc|@optional|@required|@auto_closure|' +
+	        begin: '(@warn_unused_result|@exported|@lazy|@noescape|' +
+	                  '@NSCopying|@NSManaged|@objc|@convention|@required|' +
 	                  '@noreturn|@IBAction|@IBDesignable|@IBInspectable|@IBOutlet|' +
-	                  '@infix|@prefix|@postfix)'
+	                  '@infix|@prefix|@postfix|@autoclosure|@testable|@available|' +
+	                  '@nonobjc|@NSApplicationMain|@UIApplicationMain)'
+
 	      },
 	      {
 	        beginKeywords: 'import', end: /$/,
@@ -40274,7 +41064,7 @@
 	};
 
 /***/ },
-/* 345 */
+/* 351 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40340,7 +41130,7 @@
 	};
 
 /***/ },
-/* 346 */
+/* 352 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40399,7 +41189,7 @@
 	};
 
 /***/ },
-/* 347 */
+/* 353 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40438,7 +41228,7 @@
 	};
 
 /***/ },
-/* 348 */
+/* 354 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40526,7 +41316,7 @@
 	};
 
 /***/ },
-/* 349 */
+/* 355 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40587,7 +41377,7 @@
 	};
 
 /***/ },
-/* 350 */
+/* 356 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40595,8 +41385,8 @@
 	    keyword:
 	      'in if for while finally var new function|0 do return void else break catch ' +
 	      'instanceof with throw case default try this switch continue typeof delete ' +
-	      'let yield const class public private get set super ' +
-	      'static implements enum export import declare type protected',
+	      'let yield const class public private protected get set super ' +
+	      'static implements enum export import declare type namespace abstract',
 	    literal:
 	      'true false null undefined NaN Infinity',
 	    built_in:
@@ -40689,7 +41479,7 @@
 	};
 
 /***/ },
-/* 351 */
+/* 357 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40748,7 +41538,7 @@
 	};
 
 /***/ },
-/* 352 */
+/* 358 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40808,7 +41598,7 @@
 	};
 
 /***/ },
-/* 353 */
+/* 359 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40851,7 +41641,7 @@
 	};
 
 /***/ },
-/* 354 */
+/* 360 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40867,7 +41657,7 @@
 	};
 
 /***/ },
-/* 355 */
+/* 361 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40921,7 +41711,7 @@
 	};
 
 /***/ },
-/* 356 */
+/* 362 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -40981,7 +41771,7 @@
 	};
 
 /***/ },
-/* 357 */
+/* 363 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41048,7 +41838,7 @@
 	};
 
 /***/ },
-/* 358 */
+/* 364 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41188,7 +41978,7 @@
 	};
 
 /***/ },
-/* 359 */
+/* 365 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41279,7 +42069,7 @@
 	};
 
 /***/ },
-/* 360 */
+/* 366 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41356,7 +42146,7 @@
 	};
 
 /***/ },
-/* 361 */
+/* 367 */
 /***/ function(module, exports) {
 
 	module.exports = function(hljs) {
@@ -41467,9 +42257,37 @@
 	};
 
 /***/ },
-/* 362 */,
-/* 363 */,
-/* 364 */
+/* 368 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// style-loader: Adds some css to the DOM by adding a <style> tag
+
+	// load the styles
+	var content = __webpack_require__(369);
+	if(typeof content === 'string') content = [[module.id, content, '']];
+	// add the styles to the DOM
+	var update = __webpack_require__(371)(content, {});
+	// Hot Module Replacement
+	if(false) {
+		// When the styles change, update the <style> tags
+		module.hot.accept("!!./../../css-loader/index.js!./zenburn.css", function() {
+			var newContent = require("!!./../../css-loader/index.js!./zenburn.css");
+			if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
+			update(newContent);
+		});
+		// When the module is disposed, remove the <style> tags
+		module.hot.dispose(function() { update(); });
+	}
+
+/***/ },
+/* 369 */
+/***/ function(module, exports, __webpack_require__) {
+
+	exports = module.exports = __webpack_require__(370)();
+	exports.push([module.id, "/*\n\nZenburn style from voldmar.ru (c) Vladimir Epifanov <voldmar@voldmar.ru>\nbased on dark.css by Ivan Sagalaev\n\n*/\n\n.hljs {\n  display: block;\n  overflow-x: auto;\n  padding: 0.5em;\n  background: #3f3f3f;\n  color: #dcdcdc;\n  -webkit-text-size-adjust: none;\n}\n\n.hljs-keyword,\n.hljs-tag,\n.css .hljs-class,\n.css .hljs-id,\n.lisp .hljs-title,\n.nginx .hljs-title,\n.hljs-request,\n.hljs-status,\n.clojure .hljs-attribute {\n  color: #e3ceab;\n}\n\n.django .hljs-template_tag,\n.django .hljs-variable,\n.django .hljs-filter .hljs-argument {\n  color: #dcdcdc;\n}\n\n.hljs-number,\n.hljs-date {\n  color: #8cd0d3;\n}\n\n.dos .hljs-envvar,\n.dos .hljs-stream,\n.hljs-variable,\n.apache .hljs-sqbracket,\n.hljs-name {\n  color: #efdcbc;\n}\n\n.dos .hljs-flow,\n.diff .hljs-change,\n.python .exception,\n.python .hljs-built_in,\n.hljs-literal,\n.tex .hljs-special {\n  color: #efefaf;\n}\n\n.diff .hljs-chunk,\n.hljs-subst {\n  color: #8f8f8f;\n}\n\n.dos .hljs-keyword,\n.hljs-decorator,\n.hljs-title,\n.hljs-type,\n.diff .hljs-header,\n.ruby .hljs-class .hljs-parent,\n.apache .hljs-tag,\n.nginx .hljs-built_in,\n.tex .hljs-command,\n.hljs-prompt {\n  color: #efef8f;\n}\n\n.dos .hljs-winutils,\n.ruby .hljs-symbol,\n.ruby .hljs-symbol .hljs-string,\n.ruby .hljs-string {\n  color: #dca3a3;\n}\n\n.diff .hljs-deletion,\n.hljs-string,\n.hljs-tag .hljs-value,\n.hljs-preprocessor,\n.hljs-pragma,\n.hljs-built_in,\n.smalltalk .hljs-class,\n.smalltalk .hljs-localvars,\n.smalltalk .hljs-array,\n.css .hljs-rule .hljs-value,\n.hljs-attr_selector,\n.hljs-pseudo,\n.apache .hljs-cbracket,\n.tex .hljs-formula,\n.coffeescript .hljs-attribute {\n  color: #cc9393;\n}\n\n.hljs-shebang,\n.diff .hljs-addition,\n.hljs-comment,\n.hljs-annotation,\n.hljs-pi,\n.hljs-doctype {\n  color: #7f9f7f;\n}\n\n.coffeescript .javascript,\n.javascript .xml,\n.tex .hljs-formula,\n.xml .javascript,\n.xml .vbscript,\n.xml .css,\n.xml .hljs-cdata {\n  opacity: 0.5;\n}\n\n", ""]);
+
+/***/ },
+/* 370 */
 /***/ function(module, exports) {
 
 	/*
@@ -41526,7 +42344,7 @@
 
 
 /***/ },
-/* 365 */
+/* 371 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -41750,16 +42568,16 @@
 
 
 /***/ },
-/* 366 */
+/* 372 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// style-loader: Adds some css to the DOM by adding a <style> tag
 
 	// load the styles
-	var content = __webpack_require__(367);
+	var content = __webpack_require__(373);
 	if(typeof content === 'string') content = [[module.id, content, '']];
 	// add the styles to the DOM
-	var update = __webpack_require__(365)(content, {});
+	var update = __webpack_require__(371)(content, {});
 	// Hot Module Replacement
 	if(false) {
 		// When the styles change, update the <style> tags
@@ -41773,14 +42591,14 @@
 	}
 
 /***/ },
-/* 367 */
+/* 373 */
 /***/ function(module, exports, __webpack_require__) {
 
-	exports = module.exports = __webpack_require__(364)();
-	exports.push([module.id, "pre {\n    margin: 0;\n    padding: 0;\n}\n\nbody {\n  margin: 0;\n}\n\na {\n    text-decoration: none;\n    color: inherit;\n    cursor: pointer;\n}\n\na:hover {\n    text-decoration: underline;\n}\n", ""]);
+	exports = module.exports = __webpack_require__(370)();
+	exports.push([module.id, "pre {\n    margin: 0;\n    padding: 0;\n}\n\nbody {\n  margin: 0;\n}\n\na {\n    text-decoration: none;\n    color: inherit;\n    cursor: pointer;\n}\n\na:hover {\n    text-decoration: underline;\n}\n\npre {\n    white-space: pre-wrap;       /* Since CSS 2.1 */\n    white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */\n    white-space: -pre-wrap;      /* Opera 4-6 */\n    white-space: -o-pre-wrap;    /* Opera 7 */\n    word-wrap: break-word;       /* Internet Explorer 5.5+ */\n}", ""]);
 
 /***/ },
-/* 368 */
+/* 374 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -41818,7 +42636,7 @@
 	          { href: 'https://github.com/fozzle/codereddit' },
 	          'Github'
 	        ),
-	        ', and I\'d love to see it improved upon...I sort of just work on it when I\'m bored. Let me know in Github issues if you encounter any major bugs. I\'m sure there are many.\n\nIt\'s PHP syntax because way back when I created it, PHP was all I knew. I\'d like to see some different syntax someday.\n\nUsage:\n\nYou can switch subreddits by clicking on a subreddit from the front page, or changing the url to /#/<subreddit name here>.\nReturn to the front page by clicking on "location" near the top.\nComments can be found by clicking the "for" loop in the "function"\n\n\n',
+	        ', and I\'d love to see it improved upon...I sort of just work on it when I\'m bored. Let me know in Github issues if you encounter any major bugs. I\'m sure there are many.\n\nUsage:\n\nYou can switch subreddits by clicking on a subreddit from the front page, or changing the url to /#/<subreddit name here>.\nYou can change \'languages\' by clicking the language string on the top of the page.\nReturn to the front page by clicking on "location" near the top.\nComments can be found by clicking the "for" loop in the "function"\n\n\n',
 	        React.createElement(
 	          'a',
 	          { onClick: function () {
@@ -41837,36 +42655,6 @@
 	});
 
 	module.exports = About;
-
-/***/ },
-/* 369 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-
-	// load the styles
-	var content = __webpack_require__(370);
-	if(typeof content === 'string') content = [[module.id, content, '']];
-	// add the styles to the DOM
-	var update = __webpack_require__(365)(content, {});
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		module.hot.accept("!!./../../css-loader/index.js!./zenburn.css", function() {
-			var newContent = require("!!./../../css-loader/index.js!./zenburn.css");
-			if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-			update(newContent);
-		});
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
-	}
-
-/***/ },
-/* 370 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(364)();
-	exports.push([module.id, "/*\n\nZenburn style from voldmar.ru (c) Vladimir Epifanov <voldmar@voldmar.ru>\nbased on dark.css by Ivan Sagalaev\n\n*/\n\n.hljs {\n  display: block;\n  overflow-x: auto;\n  padding: 0.5em;\n  background: #3f3f3f;\n  color: #dcdcdc;\n  -webkit-text-size-adjust: none;\n}\n\n.hljs-keyword,\n.hljs-tag,\n.css .hljs-class,\n.css .hljs-id,\n.lisp .hljs-title,\n.nginx .hljs-title,\n.hljs-request,\n.hljs-status,\n.clojure .hljs-attribute {\n  color: #e3ceab;\n}\n\n.django .hljs-template_tag,\n.django .hljs-variable,\n.django .hljs-filter .hljs-argument {\n  color: #dcdcdc;\n}\n\n.hljs-number,\n.hljs-date {\n  color: #8cd0d3;\n}\n\n.dos .hljs-envvar,\n.dos .hljs-stream,\n.hljs-variable,\n.apache .hljs-sqbracket,\n.hljs-name {\n  color: #efdcbc;\n}\n\n.dos .hljs-flow,\n.diff .hljs-change,\n.python .exception,\n.python .hljs-built_in,\n.hljs-literal,\n.tex .hljs-special {\n  color: #efefaf;\n}\n\n.diff .hljs-chunk,\n.hljs-subst {\n  color: #8f8f8f;\n}\n\n.dos .hljs-keyword,\n.hljs-decorator,\n.hljs-title,\n.hljs-type,\n.diff .hljs-header,\n.ruby .hljs-class .hljs-parent,\n.apache .hljs-tag,\n.nginx .hljs-built_in,\n.tex .hljs-command,\n.hljs-prompt {\n  color: #efef8f;\n}\n\n.dos .hljs-winutils,\n.ruby .hljs-symbol,\n.ruby .hljs-symbol .hljs-string,\n.ruby .hljs-string {\n  color: #dca3a3;\n}\n\n.diff .hljs-deletion,\n.hljs-string,\n.hljs-tag .hljs-value,\n.hljs-preprocessor,\n.hljs-pragma,\n.hljs-built_in,\n.smalltalk .hljs-class,\n.smalltalk .hljs-localvars,\n.smalltalk .hljs-array,\n.css .hljs-rule .hljs-value,\n.hljs-attr_selector,\n.hljs-pseudo,\n.apache .hljs-cbracket,\n.tex .hljs-formula,\n.coffeescript .hljs-attribute {\n  color: #cc9393;\n}\n\n.hljs-shebang,\n.diff .hljs-addition,\n.hljs-comment,\n.hljs-annotation,\n.hljs-pi,\n.hljs-doctype {\n  color: #7f9f7f;\n}\n\n.coffeescript .javascript,\n.javascript .xml,\n.tex .hljs-formula,\n.xml .javascript,\n.xml .vbscript,\n.xml .css,\n.xml .hljs-cdata {\n  opacity: 0.5;\n}\n\n", ""]);
 
 /***/ }
 /******/ ]);

@@ -18,6 +18,7 @@ module.exports = React.createClass({
         data: [],
         loading: true,
         subreddit: this.props.params.subreddit || 'frontpage',
+        subreddits: [],
         lang: this.props.location.query.lang || LANGS[0]
       };
     },
@@ -61,15 +62,34 @@ module.exports = React.createClass({
         .catch(function(response) {
             this.setState({error: "error", loading: false});
         }.bind(this));
+      this.showSubreddits();
     },
     handleLanguageChange: function() {
       var langIndex = (LANGS.indexOf(this.state.lang)+1) % LANGS.length;
       this.props.history.pushState(null, '/', {lang: LANGS[langIndex]});
     },
+    showSubreddits: function() {
+      axios.get('https://www.reddit.com/subreddits.json')
+      .then(response => {
+        var results = response.data.data.children;
+        var subreddits = [];
+        for(let i = 0; i < results.length; i++) {
+          let subredditName = results[i].data.display_name;
+          subreddits.push(subredditName);
+        }
+        this.setState({subreddits: subreddits});
+      })
+    },
     render: function() {
       var postNodes = this.state.data.map((post, i) => {
         return (
           <Post {...post.data} key={i} subredditHandler={this.switchSubreddit} lang={this.state.lang} />
+        );
+      });
+
+      var subredditNodes = this.state.subreddits.map((subreddit, i) => {
+        return (
+          <Link key={i} to={`/${subreddit}?lang=${this.state.lang}` }>"{subreddit}"{i == this.state.subreddits.length - 1 ? '' :', '}</Link>
         );
       });
 
@@ -83,6 +103,7 @@ module.exports = React.createClass({
                 <code className={this.state.lang}>
                   <Link to={`about`}>require('readme.php');</Link><br/>
                   <Link to={`/?lang=${this.state.lang}`}>$location</Link> = "{this.state.subreddit}";<br/>
+                  $locations = [<Link to={`?lang=${this.state.lang}` }>"frontpage"</Link>, {subredditNodes}];<br/>
                   $language = <a onClick={this.handleLanguageChange}>"{this.state.lang}"</a>;<br/>
                   <br/>
                   {this.state.loading ? loadingNode : postNodes}
@@ -95,6 +116,7 @@ module.exports = React.createClass({
                 <code className={this.state.lang}>
                   <Link to={`about`}>import Readme from 'readme';</Link><br/>
                   <Link to={`/?lang=${this.state.lang}`}>var location</Link> = "{this.state.subreddit}";<br/>
+                  var locations = [{subredditNodes}];<br/>
                   var language = <a onClick={this.handleLanguageChange}>"{this.state.lang}"</a>;<br/>
                   <br/>
                   {this.state.loading ? loadingNode : postNodes}
@@ -107,6 +129,7 @@ module.exports = React.createClass({
                 <code className={this.state.lang}>
                   <Link to={`about`}>from readme import *</Link><br/>
                   <Link to={`/?lang=${this.state.lang}`}>location</Link> = "{this.state.subreddit}"<br/>
+                  locations = [{subredditNodes}];<br/>
                   language = <a onClick={this.handleLanguageChange}>"{this.state.lang}"</a>;<br/>
                   <br/>
                   {this.state.loading ? loadingNode : postNodes}
@@ -119,6 +142,7 @@ module.exports = React.createClass({
                 <code className={this.state.lang}>
                   <Link to={`about`}>import com.codereddit.Readme;</Link><br/>
                   <Link to={`/?lang=${this.state.lang}`}>String location</Link> = "{this.state.subreddit}";<br/>
+                  String[] locations = {'{'}{subredditNodes}{'}'};<br/>
                   String language = <a onClick={this.handleLanguageChange}>"{this.state.lang}"</a>;<br/>
                   <br/>
                   {this.state.loading ? loadingNode : postNodes}
