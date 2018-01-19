@@ -44,7 +44,7 @@ let Comment = React.createClass({
         case 'php':
           return (
             <pre className="comment {this.props.lang}">
-            {this.props.space}$score = {this.props.score}; $author = "{this.props.author}";<br/>
+            {this.props.space}$score = {this.props.score || 0}; $author = "{this.props.author}";<br/>
             {this.formatCommentText()}
             {commentNodes}
             </pre>
@@ -52,7 +52,7 @@ let Comment = React.createClass({
         case 'javascript':
           return (
             <pre className="comment {this.props.lang}">
-            {this.props.space}var score = {this.props.score}, author = "{this.props.author}";<br/>
+            {this.props.space}var score = {this.props.score || 0}, author = "{this.props.author}";<br/>
             {this.formatCommentText()}
             {commentNodes}
             </pre>
@@ -60,7 +60,7 @@ let Comment = React.createClass({
         case 'python':
           return (
             <pre className="comment {this.props.lang}">
-            {this.props.space}score = {this.props.score}, author = "{this.props.author}"<br/>
+            {this.props.space}score = {this.props.score || 0}, author = "{this.props.author}"<br/>
             {this.formatCommentText()}
             {commentNodes}
             </pre>
@@ -68,7 +68,7 @@ let Comment = React.createClass({
         case 'java':
           return (
             <pre className="comment {this.props.lang}">
-            {this.props.space}int score = {this.props.score};<br/>
+            {this.props.space}int score = {this.props.score || 0};<br/>
             {this.props.space}String author = "{this.props.author}";<br/>
             {this.formatCommentText()}
             {commentNodes}
