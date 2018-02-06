@@ -80,10 +80,10 @@ module.exports = React.createClass({
               function {this.shortenedTitle()}(score={this.props.score}, subreddit="{linkNode}"){' {'}<br/>
                 {'  '}var author = "{this.props.author}";<br/>
                 {'  '}var link = <a href={this.props.url}>"{this.props.url}"</a>;<br/>
-                {'  '}var fullTitle = "{this.props.title}";<br/><br/>
+                {'  '}var fullTitle = `{this.props.title}`;<br/><br/>
                 {'  '}// Click to load comments{'\n'}
                 {'  '}<a onClick={this.toggleComments}>for (var numComments = 0; numComments {'<'}= {this.props.num_comments}; numComments++){' {'}</a><br/>
-              {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
+                {'  '}{this.state.loading ? loadingNode : commentNodes}<br/>
                 {'  }'}<br/>
               {'}'}
               <br/>
