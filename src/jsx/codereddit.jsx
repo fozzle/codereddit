@@ -56,7 +56,7 @@ module.exports = React.createClass({
       this.setState({loading: true});
       axios.get(url)
         .then(function(response) {
-            this.setState({data: response.data.data.children, loading: false});
+            this.setState({data: response.data.data.children.filter( (post) => {return !post.data.stickied}), loading: false});
         }.bind(this))
         .catch(function(response) {
             this.setState({error: "error", loading: false});
