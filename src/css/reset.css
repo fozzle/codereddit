@@ -1,10 +1,21 @@
+html {
+    min-height: 100%;
+    overflow: hidden;
+}
+
 pre {
+    height: 100%;
     margin: 0;
     padding: 0;
 }
 
 body {
-  margin: 0;
+    height: 100%;
+    margin: 0;
+}
+
+code {
+    height: 100%;
 }
 
 a {
