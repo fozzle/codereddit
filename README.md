@@ -1,5 +1,5 @@
 # CodeReddit
 
-Browse reddit in code mode. [CodeReddit.net](http://codereddit.net)
+Browse reddit in code mode.
 
 Make an issue for any feature requests or bugs.
